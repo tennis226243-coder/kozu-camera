@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1C2028">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>カメラ</title>
 <meta name="description" content="スマホのカメラに基本の15構図ガイドを重ねて撮影できる無料Webアプリ">
@@ -12,144 +12,176 @@
 <link rel="icon" href="data:image/png;base64,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" type="image/png">
 <link rel="apple-touch-icon" href="data:image/png;base64,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">
 <style>
+/* A camera is always dark: both color schemes share the same viewfinder palette */
 :root{
-  --panel:#EEF0F3; --chip:#FFFFFF; --chip-line:#D6DAE1; --ink:#1F2530; --ink-dim:#5B6472;
-  --accent:#E8930C; --vf:#000;
+  --ink:#F7F4EE; --dim:rgba(247,244,238,.58); --faint:rgba(247,244,238,.18);
+  --accent:#FFB547; --accent-ink:#2B1A02;
+  --glass:rgba(22,24,30,.46); --glass-line:rgba(255,255,255,.14);
+  --bg:#000;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --panel:#1C2028; --chip:#272D38; --chip-line:#353D4B; --ink:#F3F0E8; --ink-dim:#9AA3B2; --accent:#FFB547;
-  }
-}
-:root[data-theme="dark"]{
-  --panel:#1C2028; --chip:#272D38; --chip-line:#353D4B; --ink:#F3F0E8; --ink-dim:#9AA3B2; --accent:#FFB547;
-}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --bg:#000; } }
+:root[data-theme="dark"]{ --bg:#000; }
 *,*::before,*::after{box-sizing:border-box}
-html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--panel)}
+html{height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
 body{
-  height:100%;margin:0;background:var(--panel);color:var(--ink);
-  font-family:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
-  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+  height:100%;margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Yu Gothic",system-ui,sans-serif;
+  font-feature-settings:"palt";letter-spacing:.02em;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
 }
-.app{height:100%;display:flex;flex-direction:column;max-width:720px;margin:0 auto}
-button{font:inherit;color:inherit;cursor:pointer}
-button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.glass{background:var(--glass);border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5)}
 
-/* top bar */
-.top{display:flex;align-items:center;gap:8px;padding:8px 12px}
-.top h1{font-size:1rem;font-weight:700;margin:0;flex:1;letter-spacing:.02em}
-.tbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--chip-line);background:var(--chip);
-  border-radius:999px;padding:6px 12px;font-size:.8125rem}
-.tbtn svg{width:16px;height:16px}
-.tbtn[hidden]{display:none}
-
-/* viewfinder */
-.vf{position:relative;flex:1;min-height:0;background:var(--vf);overflow:hidden;touch-action:pan-y}
+/* viewfinder: full bleed under the system bars */
+.vf{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:pan-y}
 .vf video,.vf .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .vf video.mirror{transform:scaleX(-1)}
 .vf .still{display:none}
-#guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .2s}
-.caption{position:absolute;left:0;right:0;bottom:0;padding:28px 16px 12px;
-  background:linear-gradient(to top,rgba(0,0,0,.62),rgba(0,0,0,0));color:#fff;pointer-events:none}
-.caption .nm{font-size:1.25rem;font-weight:700;line-height:1.3}
-.caption .tp{font-size:.875rem;line-height:1.6;opacity:.9;max-width:34em}
+#guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .25s}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-.flash.on{animation:fl .28s ease-out}
-@keyframes fl{0%{opacity:.85}100%{opacity:0}}
+.flash.on{animation:fl .3s ease-out}
+@keyframes fl{0%{opacity:.8}100%{opacity:0}}
 
-.start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;padding:24px;text-align:center;color:#fff;
-  background:radial-gradient(ellipse at center,#2A3140 0%,#151820 80%)}
-.start p{margin:0;line-height:1.7;font-size:.9375rem;max-width:22em;color:#D8DCE4}
-.start .err{color:#FFC98A;font-size:.8125rem}
-.pbtn{background:#FFB547;color:#2A1C05;border:0;border-radius:14px;padding:13px 26px;font-weight:700;font-size:1rem}
-.sbtn{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:14px;padding:11px 22px;font-size:.9375rem}
+/* big composition name, shown briefly when the guide changes */
+.bigname{position:fixed;left:0;right:0;top:38%;text-align:center;pointer-events:none;opacity:0;
+  font-size:2.25rem;font-weight:300;letter-spacing:.12em;text-shadow:0 2px 18px rgba(0,0,0,.55)}
+.bigname small{display:block;font-size:.75rem;letter-spacing:.3em;margin-top:6px;color:var(--dim)}
+.bigname.show{animation:nm 1.1s ease-out}
+@keyframes nm{0%{opacity:0;transform:translateY(6px)}18%{opacity:1;transform:none}70%{opacity:1}100%{opacity:0}}
 
-/* chips */
-.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 12px 6px;scroll-snap-type:x proximity;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex:0 0 auto;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;
-  width:64px;padding:8px 4px 6px;border-radius:12px;background:var(--chip);border:1px solid var(--chip-line);
-  color:var(--ink-dim);font-size:.6875rem;line-height:1.2}
-.chip svg{width:30px;height:40px;display:block}
-.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent)}
+/* top controls */
+.top{position:fixed;top:0;left:0;right:0;z-index:5;pointer-events:none;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 0;display:flex;align-items:center;gap:8px}
+.top > *{pointer-events:auto}
+.pill{height:38px;border-radius:19px;padding:0 14px 0 11px;display:inline-flex;align-items:center;gap:7px;font-size:.8125rem}
+.pill svg{width:17px;height:17px}
+.spacer{flex:1}
+.round{width:38px;height:38px;border-radius:50%;display:grid;place-items:center}
+.round svg{width:19px;height:19px}
+.round[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.round[hidden]{display:none}
 
-/* controls */
-.ctrl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:6px 16px 14px;gap:12px}
-.side{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;color:var(--ink-dim);font-size:.75rem}
-.side .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--chip);border:1px solid var(--chip-line);color:var(--ink)}
-.side .ic svg{width:22px;height:22px}
-.side:disabled{opacity:.35;cursor:default}
-.side[aria-pressed="true"] .ic{background:var(--accent);border-color:var(--accent);color:#2A1C05}
-.shutter{width:74px;height:74px;border-radius:50%;border:4px solid var(--ink);background:transparent;padding:4px}
-.shutter span{display:block;width:100%;height:100%;border-radius:50%;background:var(--ink);transition:transform .1s}
-.shutter:active span{transform:scale(.9)}
-.shutter:disabled{opacity:.3}
+/* bottom controls */
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:5;pointer-events:none;
+  padding:56px 0 calc(env(safe-area-inset-bottom,0px) + 14px);
+  background:linear-gradient(to top,rgba(0,0,0,.72) 0%,rgba(0,0,0,.45) 55%,rgba(0,0,0,0) 100%)}
+.bottom > *{pointer-events:auto}
+.tip{margin:0 auto 12px;max-width:26em;padding:0 24px;text-align:center;font-size:.8125rem;line-height:1.7;color:var(--dim);min-height:2.2em}
+.dial{position:relative}
+.dial::after{content:"";position:absolute;left:50%;bottom:-2px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--accent)}
+.modes{display:flex;gap:4px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
+  padding:4px 50% 12px;-webkit-mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent);
+          mask-image:linear-gradient(to right,transparent,#000 22%,#000 78%,transparent)}
+.modes::-webkit-scrollbar{display:none}
+.mode{flex:0 0 auto;scroll-snap-align:center;padding:6px 10px;font-size:.9375rem;color:var(--dim);white-space:nowrap;transition:color .2s}
+.mode[aria-pressed="true"]{color:var(--accent);font-weight:600}
+.row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px 0}
+.thumb{justify-self:start;width:46px;height:46px;border-radius:10px;overflow:hidden;border:1.5px solid rgba(255,255,255,.7);visibility:hidden}
+.thumb.has{visibility:visible}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.shutter{width:76px;height:76px;border-radius:50%;border:3.5px solid #fff;padding:5px}
+.shutter span{display:block;width:100%;height:100%;border-radius:50%;background:#fff;transition:transform .12s}
+.shutter:active span{transform:scale(.88)}
+.shutter:disabled{opacity:.35}
+.variant{justify-self:end;width:46px;height:46px;border-radius:50%;display:grid;place-items:center}
+.variant svg{width:21px;height:21px}
+.variant:disabled{opacity:.3;cursor:default}
 
-/* preview sheet */
-.sheet{position:fixed;inset:0;z-index:10;display:none;flex-direction:column;background:rgba(10,12,16,.94);color:#fff;
-  padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
-.sheet.open{display:flex}
+/* start screen */
+.start{position:fixed;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:calc(env(safe-area-inset-top,0px) + 24px) 28px calc(env(safe-area-inset-bottom,0px) + 24px);
+  background:#000;text-align:center}
+.start .mark{width:min(64vw,260px);aspect-ratio:1.618/1;margin-bottom:18px}
+.start .mark path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.8s .2s cubic-bezier(.6,0,.2,1) forwards}
+.start .mark rect,.start .mark line{opacity:0;animation:fade .8s 1.4s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fade{to{opacity:1}}
+.start h1{margin:0;font-size:2rem;font-weight:300;letter-spacing:.24em;padding-left:.24em}
+.start p{margin:0 0 22px;font-size:.875rem;line-height:1.8;color:var(--dim);max-width:20em}
+.cta{min-width:220px;height:52px;border-radius:26px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:1rem;letter-spacing:.08em}
+.ghost{min-width:220px;height:46px;font-size:.875rem;color:var(--dim)}
+.err{color:#FFC98A;font-size:.8125rem;line-height:1.7;max-width:22em;margin-top:6px}
+
+/* preview */
+.sheet{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;background:#000;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 16px);
+  visibility:hidden;opacity:0;transform:translateY(16px);transition:opacity .25s,transform .25s,visibility 0s .25s}
+.sheet.open{visibility:visible;opacity:1;transform:none;transition:opacity .25s,transform .25s}
 .sheet .imgwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-.sheet img{max-width:100%;max-height:100%;border-radius:8px}
-.sheet .row{display:flex;gap:12px;justify-content:center;padding-top:16px;flex-wrap:wrap}
-.sheet .msg{text-align:center;font-size:.875rem;min-height:1.4em;padding-top:10px;color:#D8DCE4}
+.sheet img{max-width:100%;max-height:100%;border-radius:6px}
+.sheet .msg{text-align:center;font-size:.8125rem;min-height:1.6em;padding-top:12px;color:var(--dim)}
+.sheet .acts{display:flex;gap:12px;justify-content:center;padding-top:10px}
+.sheet .acts button{height:50px;border-radius:25px;padding:0 28px;font-size:.9375rem}
+.sheet .save{background:var(--accent);color:var(--accent-ink);font-weight:600}
 input[type=file]{display:none}
-@media (prefers-reduced-motion:reduce){.flash.on{animation:none}#guide{transition:none}}
+@media (prefers-reduced-motion:reduce){
+  .flash.on,.bigname.show{animation:none}
+  .start .mark path{animation:none;stroke-dashoffset:0}
+  .start .mark rect,.start .mark line{animation:none;opacity:1}
+  .sheet,.sheet.open{transition:none}
+}
 </style>
 </head>
 <body>
-<div class="app">
-  <header class="top">
-    <h1>カメラ</h1>
-    <button class="tbtn" id="opBtn" aria-label="ガイドの濃さを切り替え">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18" opacity=".6"/></svg>
-      <span id="opLabel">濃い</span>
-    </button>
-    <button class="tbtn" id="flipCam" hidden aria-label="前後のカメラを切り替え">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3l-2-3H9L7 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/><path d="M9 13a3 3 0 0 1 5-2.2M15 13a3 3 0 0 1-5 2.2"/><path d="M14 9v2h-2M10 17v-2h2"/></svg>
-      切替
-    </button>
-  </header>
+<main class="vf" id="vf">
+  <video id="video" playsinline muted autoplay></video>
+  <img class="still" id="still" alt="選んだ写真">
+  <svg id="guide" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="flash" id="flash"></div>
+</main>
+<div class="bigname" id="bigname" aria-hidden="true"></div>
 
-  <main class="vf" id="vf">
-    <video id="video" playsinline muted autoplay></video>
-    <img class="still" id="still" alt="選んだ写真">
-    <svg id="guide" xmlns="http://www.w3.org/2000/svg"></svg>
-    <div class="caption"><div class="nm" id="cName"></div><div class="tp" id="cTip"></div></div>
-    <div class="flash" id="flash"></div>
-    <div class="start" id="start">
-      <p>カメラの映像に構図ガイドを重ねます。<br>左右にスワイプすると構図が切り替わります。</p>
-      <button class="pbtn" id="startCam">カメラを起動</button>
-      <button class="sbtn" id="pickPhoto">撮った写真で確認する</button>
-      <p class="err" id="err" hidden></p>
-    </div>
-  </main>
+<header class="top">
+  <button class="pill glass" id="opBtn" aria-label="ガイドの濃さを切り替え">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17" opacity=".55"/></svg>
+    <span id="opLabel">ガイド 濃い</span>
+  </button>
+  <span class="spacer"></span>
+  <button class="round glass" id="burnBtn" aria-pressed="false" aria-label="ガイド線も写真に写す">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M10 4v16M14 4v16M4 10h16M4 14h16" opacity=".6"/></svg>
+  </button>
+  <button class="round glass" id="flipCam" hidden aria-label="前後のカメラを切り替え">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.6-5.7L20 8.5M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.6 5.7L4 15.5M4 20v-4.5h4.5"/></svg>
+  </button>
+</header>
 
-  <nav class="chips" id="chips" aria-label="構図を選ぶ"></nav>
-
-  <div class="ctrl">
-    <button class="side" id="variantBtn" aria-label="ガイドの向きを変える">
-      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2 3"/><path d="M8 7 3 12l5 5V7zM16 7l5 5-5 5V7z"/></svg></span>
-      向きを変える
-    </button>
+<footer class="bottom">
+  <p class="tip" id="tip" aria-live="polite"></p>
+  <div class="dial"><nav class="modes" id="modes" aria-label="構図を選ぶ"></nav></div>
+  <div class="row">
+    <button class="thumb" id="thumb" aria-label="直前に撮った写真を見る"><img id="thumbImg" alt=""></button>
     <button class="shutter" id="shutter" aria-label="撮影する" disabled><span></span></button>
-    <button class="side" id="burnBtn" aria-pressed="false" aria-label="ガイド線も写真に入れる">
-      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 5v14M15 5v14M3 10h18M3 14h18" opacity=".7"/></svg></span>
-      線も写す
+    <button class="variant glass" id="variantBtn" aria-label="ガイドの向きを変える">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="1.5 3"/><path d="M8.5 7.5 4 12l4.5 4.5zM15.5 7.5 20 12l-4.5 4.5z"/></svg>
     </button>
   </div>
-</div>
+</footer>
+
+<section class="start" id="start">
+  <svg class="mark" viewBox="0 0 161.8 100" fill="none" aria-hidden="true">
+    <rect x="1" y="1" width="159.8" height="98" rx="3" stroke="rgba(247,244,238,.3)" stroke-width="1.2"/>
+    <line x1="61.8" y1="1" x2="61.8" y2="99" stroke="rgba(247,244,238,.18)" stroke-width="1"/>
+    <line x1="61.8" y1="61.8" x2="160.8" y2="61.8" stroke="rgba(247,244,238,.18)" stroke-width="1"/>
+    <path id="startSpiral" pathLength="1" stroke="#FFB547" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+  <h1>カメラ</h1>
+  <p>15の構図ガイドを重ねて<br>撮影できます。</p>
+  <button class="cta" id="startCam">カメラを起動</button>
+  <button class="ghost" id="pickPhoto">撮った写真で構図を確認</button>
+  <p class="err" id="err" hidden></p>
+</section>
 
 <div class="sheet" id="sheet" role="dialog" aria-label="撮影した写真">
   <div class="imgwrap"><img id="shot" alt="撮影した写真"></div>
   <div class="msg" id="sheetMsg" aria-live="polite"></div>
-  <div class="row">
-    <button class="sbtn" id="retake">撮り直す</button>
-    <button class="pbtn" id="save">保存する</button>
+  <div class="acts">
+    <button class="glass" id="retake">閉じる</button>
+    <button class="save" id="save">保存する</button>
   </div>
 </div>
 <input type="file" id="file" accept="image/*">
@@ -189,7 +221,7 @@ function spiralPts(){
   return pts;
 }
 const SPIRAL = spiralPts();
-const EYE = [1.1180, 0.6910];
+const EYE = [1.1708, 0.7236];
 
 const COMPS = [
  {name:'日の丸',tip:'主役を画面の真ん中に。背景をシンプルにすると主役が強く伝わります。',
@@ -255,35 +287,54 @@ function buildSvg(c, W, H, v, sw){
     `<g filter="url(#sh)">${buildInner(c,W,H,v,sw,GUIDE,ACC)}</g></svg>`;
 }
 
+
 /* state */
 const $ = id => document.getElementById(id);
-const vf=$('vf'), video=$('video'), still=$('still'), guide=$('guide');
-let idx=1, variant=0, opLevel=0, burn=false, facing='environment', stream=null, source=null, downloads=null;
-const OPS=[{l:'濃い',o:1},{l:'薄い',o:.5},{l:'非表示',o:0}];
+const vf=$('vf'), video=$('video'), still=$('still'), guide=$('guide'), modes=$('modes');
+let idx=1, variant=0, opLevel=0, burn=false, facing='environment', stream=null, source=null, downloads=null, ready=false;
+const OPS=[{l:'ガイド 濃い',o:1},{l:'ガイド 薄い',o:.45},{l:'ガイド なし',o:0}];
 
-/* chips */
-const chips=$('chips');
+/* start-screen spiral */
+$('startSpiral').setAttribute('d','M'+SPIRAL.map(p=>f(p[0]*100)+' '+f(p[1]*100)).join(' L'));
+
+/* composition dial */
 COMPS.forEach((c,i)=>{
-  const b=document.createElement('button');b.className='chip';b.type='button';
-  b.innerHTML=`<svg viewBox="0 0 30 40" aria-hidden="true"><rect x=".75" y=".75" width="28.5" height="38.5" rx="3" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1"/>${buildInner(c,30,40,0,1.2,'currentColor','currentColor')}</svg>${c.name}`;
+  const b=document.createElement('button');b.className='mode';b.type='button';b.textContent=c.name;
   b.addEventListener('click',()=>select(i));
-  chips.appendChild(b);
+  modes.appendChild(b);
 });
+let scrollTimer=null, programmatic=false;
+modes.addEventListener('scroll',()=>{
+  clearTimeout(scrollTimer);
+  scrollTimer=setTimeout(()=>{
+    if(programmatic){programmatic=false;return;}
+    const mid=modes.getBoundingClientRect().left+modes.clientWidth/2;
+    let best=idx,bd=1e9;
+    [...modes.children].forEach((b,i)=>{const r=b.getBoundingClientRect();const d=Math.abs(r.left+r.width/2-mid);if(d<bd){bd=d;best=i;}});
+    if(best!==idx)select(best,{scroll:false});
+  },90);
+},{passive:true});
 
 function render(){
   const W=vf.clientWidth,H=vf.clientHeight; if(!W||!H)return;
-  const c=COMPS[idx], sw=Math.max(1.5,Math.min(W,H)/240);
+  const sw=Math.max(1.5,Math.min(W,H)/240);
   guide.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  guide.innerHTML=buildSvg(c,W,H,variant,sw).replace(/^<svg[^>]*>|<\/svg>$/g,'');
+  guide.innerHTML=buildSvg(COMPS[idx],W,H,variant,sw).replace(/^<svg[^>]*>|<\/svg>$/g,'');
   guide.style.opacity=OPS[opLevel].o;
 }
-function select(i){
-  idx=(i+COMPS.length)%COMPS.length; variant=0;
+function select(i,opts={}){
+  const n=(i+COMPS.length)%COMPS.length, changed=n!==idx;
+  idx=n; variant=0;
   const c=COMPS[idx];
-  $('cName').textContent=c.name+'構図'; $('cTip').textContent=c.tip;
-  [...chips.children].forEach((b,j)=>b.setAttribute('aria-pressed',j===idx));
-  chips.children[idx].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+  $('tip').textContent=c.tip;
+  [...modes.children].forEach((b,j)=>b.setAttribute('aria-pressed',j===idx));
+  if(opts.scroll!==false){programmatic=true;modes.children[idx].scrollIntoView({behavior:opts.instant?'auto':'smooth',inline:'center',block:'nearest'});}
   $('variantBtn').disabled=!(c.variants>1);
+  if(changed&&ready){
+    const bn=$('bigname');bn.innerHTML=`${c.name}<small>${idx+1} / ${COMPS.length}</small>`;
+    bn.classList.remove('show');void bn.offsetWidth;bn.classList.add('show');
+    navigator.vibrate?.(6);
+  }
   render();
 }
 $('variantBtn').addEventListener('click',()=>{const n=COMPS[idx].variants||1;variant=(variant+1)%n;render();});
@@ -291,7 +342,7 @@ $('opBtn').addEventListener('click',()=>{opLevel=(opLevel+1)%OPS.length;$('opLab
 $('burnBtn').addEventListener('click',e=>{burn=!burn;e.currentTarget.setAttribute('aria-pressed',burn);});
 new ResizeObserver(render).observe(vf);
 
-/* swipe to change composition */
+/* swipe on the viewfinder */
 let sx=null,sy=null;
 vf.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;});
 vf.addEventListener('pointerup',e=>{
@@ -300,19 +351,20 @@ vf.addEventListener('pointerup',e=>{
 });
 
 /* camera */
+function enterViewfinder(){$('start').style.display='none';$('shutter').disabled=false;ready=true;}
 function showErr(msg){const el=$('err');el.textContent=msg;el.hidden=false;$('start').style.display='flex';}
 async function startCamera(){
-  if(!navigator.mediaDevices?.getUserMedia){showErr('このブラウザではカメラを使えません。「撮った写真で確認する」をお試しください。');return;}
+  if(!navigator.mediaDevices?.getUserMedia){showErr('このブラウザではカメラを使えません。「撮った写真で構図を確認」をお試しください。');return;}
   try{
     stream?.getTracks().forEach(t=>t.stop());
     stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:1440}}});
     video.srcObject=stream; await video.play();
     video.classList.toggle('mirror',facing==='user');
     video.style.display='block'; still.style.display='none'; source='video';
-    $('start').style.display='none'; $('shutter').disabled=false; $('flipCam').hidden=false;
+    $('flipCam').hidden=false; enterViewfinder();
   }catch(err){
     const n=err&&err.name;
-    showErr(n==='NotAllowedError'?'カメラの使用が許可されませんでした。ブラウザの設定でカメラを許可してから再度お試しください。':
+    showErr(n==='NotAllowedError'?'カメラの使用が許可されませんでした。設定でカメラを許可してから、もう一度お試しください。':
       n==='NotFoundError'?'カメラが見つかりませんでした。':'カメラを起動できませんでした（'+(n||'不明なエラー')+'）。');
   }
 }
@@ -321,8 +373,7 @@ $('flipCam').addEventListener('click',()=>{facing=facing==='environment'?'user':
 $('pickPhoto').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',e=>{
   const fl=e.target.files[0];if(!fl)return;
-  still.onload=()=>{still.style.display='block';video.style.display='none';source='still';
-    $('start').style.display='none';$('shutter').disabled=false;};
+  still.onload=()=>{still.style.display='block';video.style.display='none';source='still';enterViewfinder();};
   still.src=URL.createObjectURL(fl); e.target.value='';
 });
 
@@ -343,15 +394,19 @@ async function capture(){
     await new Promise(res=>{const im=new Image();im.onload=()=>{ctx.globalAlpha=OPS[opLevel].o;ctx.drawImage(im,0,0,cw,ch);ctx.globalAlpha=1;URL.revokeObjectURL(url);res();};im.onerror=res;im.src=url;});
   }
   lastBlob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
-  $('shot').src=URL.createObjectURL(lastBlob); $('sheetMsg').textContent=''; $('sheet').classList.add('open');
+  const u=URL.createObjectURL(lastBlob);
+  $('shot').src=u; $('thumbImg').src=u; $('thumb').classList.add('has');
+  openSheet();
 }
+function openSheet(){$('sheetMsg').textContent='';$('sheet').classList.add('open');}
 $('shutter').addEventListener('click',()=>{
   const fl=$('flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
   navigator.vibrate?.(12); capture();
 });
+$('thumb').addEventListener('click',()=>{if(lastBlob)openSheet();});
 $('retake').addEventListener('click',()=>$('sheet').classList.remove('open'));
 
-/* saving: Claude artifact downloads capability, else a normal download link */
+/* saving: Claude artifact downloads, else the share sheet (iPhone: 画像を保存), else a download link */
 (async()=>{try{if(window.claude?.use)downloads=await window.claude.use('downloads');}catch(e){downloads=null;}})();
 function fname(){const d=new Date(),p=n=>String(n).padStart(2,'0');
   return `kozu-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.jpg`;}
@@ -372,7 +427,7 @@ $('save').addEventListener('click',async()=>{
   msg.textContent='保存しました';
 });
 
-select(1);
+select(1,{instant:true});
 })();
 </script>
 </body>
