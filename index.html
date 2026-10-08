@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1C2028">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>カメラ</title>
+<meta name="description" content="スマホのカメラに基本の15構図ガイドを重ねて撮影できる無料Webアプリ">
+<meta name="apple-mobile-web-app-title" content="カメラ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/png;base64,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" type="image/png">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<style>
+:root{
+  --panel:#EEF0F3; --chip:#FFFFFF; --chip-line:#D6DAE1; --ink:#1F2530; --ink-dim:#5B6472;
+  --accent:#E8930C; --vf:#000;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --panel:#1C2028; --chip:#272D38; --chip-line:#353D4B; --ink:#F3F0E8; --ink-dim:#9AA3B2; --accent:#FFB547;
+  }
+}
+:root[data-theme="dark"]{
+  --panel:#1C2028; --chip:#272D38; --chip-line:#353D4B; --ink:#F3F0E8; --ink-dim:#9AA3B2; --accent:#FFB547;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--panel)}
+body{
+  height:100%;margin:0;background:var(--panel);color:var(--ink);
+  font-family:"Zen Kaku Gothic New","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none;
+}
+.app{height:100%;display:flex;flex-direction:column;max-width:720px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:8px;padding:8px 12px}
+.top h1{font-size:1rem;font-weight:700;margin:0;flex:1;letter-spacing:.02em}
+.tbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--chip-line);background:var(--chip);
+  border-radius:999px;padding:6px 12px;font-size:.8125rem}
+.tbtn svg{width:16px;height:16px}
+.tbtn[hidden]{display:none}
+
+/* viewfinder */
+.vf{position:relative;flex:1;min-height:0;background:var(--vf);overflow:hidden;touch-action:pan-y}
+.vf video,.vf .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vf video.mirror{transform:scaleX(-1)}
+.vf .still{display:none}
+#guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .2s}
+.caption{position:absolute;left:0;right:0;bottom:0;padding:28px 16px 12px;
+  background:linear-gradient(to top,rgba(0,0,0,.62),rgba(0,0,0,0));color:#fff;pointer-events:none}
+.caption .nm{font-size:1.25rem;font-weight:700;line-height:1.3}
+.caption .tp{font-size:.875rem;line-height:1.6;opacity:.9;max-width:34em}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.on{animation:fl .28s ease-out}
+@keyframes fl{0%{opacity:.85}100%{opacity:0}}
+
+.start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:24px;text-align:center;color:#fff;
+  background:radial-gradient(ellipse at center,#2A3140 0%,#151820 80%)}
+.start p{margin:0;line-height:1.7;font-size:.9375rem;max-width:22em;color:#D8DCE4}
+.start .err{color:#FFC98A;font-size:.8125rem}
+.pbtn{background:#FFB547;color:#2A1C05;border:0;border-radius:14px;padding:13px 26px;font-weight:700;font-size:1rem}
+.sbtn{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:14px;padding:11px 22px;font-size:.9375rem}
+
+/* chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 12px 6px;scroll-snap-type:x proximity;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;
+  width:64px;padding:8px 4px 6px;border-radius:12px;background:var(--chip);border:1px solid var(--chip-line);
+  color:var(--ink-dim);font-size:.6875rem;line-height:1.2}
+.chip svg{width:30px;height:40px;display:block}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent)}
+
+/* controls */
+.ctrl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:6px 16px 14px;gap:12px}
+.side{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;color:var(--ink-dim);font-size:.75rem}
+.side .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--chip);border:1px solid var(--chip-line);color:var(--ink)}
+.side .ic svg{width:22px;height:22px}
+.side:disabled{opacity:.35;cursor:default}
+.side[aria-pressed="true"] .ic{background:var(--accent);border-color:var(--accent);color:#2A1C05}
+.shutter{width:74px;height:74px;border-radius:50%;border:4px solid var(--ink);background:transparent;padding:4px}
+.shutter span{display:block;width:100%;height:100%;border-radius:50%;background:var(--ink);transition:transform .1s}
+.shutter:active span{transform:scale(.9)}
+.shutter:disabled{opacity:.3}
+
+/* preview sheet */
+.sheet{position:fixed;inset:0;z-index:10;display:none;flex-direction:column;background:rgba(10,12,16,.94);color:#fff;
+  padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.sheet.open{display:flex}
+.sheet .imgwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.sheet img{max-width:100%;max-height:100%;border-radius:8px}
+.sheet .row{display:flex;gap:12px;justify-content:center;padding-top:16px;flex-wrap:wrap}
+.sheet .msg{text-align:center;font-size:.875rem;min-height:1.4em;padding-top:10px;color:#D8DCE4}
+input[type=file]{display:none}
+@media (prefers-reduced-motion:reduce){.flash.on{animation:none}#guide{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>カメラ</h1>
+    <button class="tbtn" id="opBtn" aria-label="ガイドの濃さを切り替え">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18" opacity=".6"/></svg>
+      <span id="opLabel">濃い</span>
+    </button>
+    <button class="tbtn" id="flipCam" hidden aria-label="前後のカメラを切り替え">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3l-2-3H9L7 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/><path d="M9 13a3 3 0 0 1 5-2.2M15 13a3 3 0 0 1-5 2.2"/><path d="M14 9v2h-2M10 17v-2h2"/></svg>
+      切替
+    </button>
+  </header>
+
+  <main class="vf" id="vf">
+    <video id="video" playsinline muted autoplay></video>
+    <img class="still" id="still" alt="選んだ写真">
+    <svg id="guide" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="caption"><div class="nm" id="cName"></div><div class="tp" id="cTip"></div></div>
+    <div class="flash" id="flash"></div>
+    <div class="start" id="start">
+      <p>カメラの映像に構図ガイドを重ねます。<br>左右にスワイプすると構図が切り替わります。</p>
+      <button class="pbtn" id="startCam">カメラを起動</button>
+      <button class="sbtn" id="pickPhoto">撮った写真で確認する</button>
+      <p class="err" id="err" hidden></p>
+    </div>
+  </main>
+
+  <nav class="chips" id="chips" aria-label="構図を選ぶ"></nav>
+
+  <div class="ctrl">
+    <button class="side" id="variantBtn" aria-label="ガイドの向きを変える">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2 3"/><path d="M8 7 3 12l5 5V7zM16 7l5 5-5 5V7z"/></svg></span>
+      向きを変える
+    </button>
+    <button class="shutter" id="shutter" aria-label="撮影する" disabled><span></span></button>
+    <button class="side" id="burnBtn" aria-pressed="false" aria-label="ガイド線も写真に入れる">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 5v14M15 5v14M3 10h18M3 14h18" opacity=".7"/></svg></span>
+      線も写す
+    </button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-label="撮影した写真">
+  <div class="imgwrap"><img id="shot" alt="撮影した写真"></div>
+  <div class="msg" id="sheetMsg" aria-live="polite"></div>
+  <div class="row">
+    <button class="sbtn" id="retake">撮り直す</button>
+    <button class="pbtn" id="save">保存する</button>
+  </div>
+</div>
+<input type="file" id="file" accept="image/*">
+
+<script>
+(() => {
+const PHI = (1 + Math.sqrt(5)) / 2;
+const GUIDE = '#FFF7E6', ACC = '#FFB547';
+const f = n => Math.round(n * 10) / 10;
+
+/* drawing primitives */
+function prims(sw, col, acc){
+  const st = (op) => `stroke="${col}" stroke-width="${sw}" stroke-opacity="${op}" stroke-linecap="round" stroke-linejoin="round"`;
+  return {
+    L:(x1,y1,x2,y2,op=1,dash)=>`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" ${st(op)}${dash?` stroke-dasharray="${dash}"`:''}/>`,
+    P:(d,op=1)=>`<path d="${d}" fill="none" ${st(op)}/>`,
+    PL:(pts,op=1)=>`<polyline points="${pts.map(p=>f(p[0])+','+f(p[1])).join(' ')}" fill="none" ${st(op)}/>`,
+    C:(cx,cy,r,op=1)=>`<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="none" ${st(op)}/>`,
+    D:(cx,cy)=>`<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(sw*2.4)}" fill="${acc}"/>`,
+    SHADE:(d,op)=>`<path d="${d}" fill="#000" fill-opacity="${op}" fill-rule="evenodd"/>`,
+    sw
+  };
+}
+
+/* golden spiral in a PHI x 1 box, returned as unit points */
+function spiralPts(){
+  let x=0,y=0,w=PHI,h=1; const pts=[];
+  for(let i=0;i<11;i++){
+    const k=i%4; let s,cx,cy,a0;
+    if(k===0){s=h;cx=x+s;cy=y+s;a0=Math.PI;}
+    if(k===1){s=w;cx=x;cy=y+s;a0=-Math.PI/2;}
+    if(k===2){s=h;cx=x+w-s;cy=y;a0=0;}
+    if(k===3){s=w;cx=x+w;cy=y+h-s;a0=Math.PI/2;}
+    for(let j=(i?1:0);j<=14;j++){const a=a0+(Math.PI/2)*(j/14);pts.push([cx+s*Math.cos(a),cy+s*Math.sin(a)]);}
+    if(k===0){x+=s;w-=s;} if(k===1){y+=s;h-=s;} if(k===2){w-=s;} if(k===3){h-=s;}
+  }
+  return pts;
+}
+const SPIRAL = spiralPts();
+const EYE = [1.1180, 0.6910];
+
+const COMPS = [
+ {name:'日の丸',tip:'主役を画面の真ん中に。背景をシンプルにすると主役が強く伝わります。',
+  draw:(W,H,v,g)=>{const r=Math.min(W,H)*.17,c=Math.min(W,H)*.04;
+   return g.C(W/2,H/2,r,.9)+g.L(W/2-c,H/2,W/2+c,H/2)+g.L(W/2,H/2-c,W/2,H/2+c);}},
+ {name:'三分割',tip:'主役を線の交点に置き、地平線は上か下の線に合わせます。',
+  draw:(W,H,v,g)=>{let s='';for(const t of [1/3,2/3]){s+=g.L(W*t,0,W*t,H)+g.L(0,H*t,W,H*t);}
+   for(const a of [1/3,2/3])for(const b of [1/3,2/3])s+=g.D(W*a,H*b);return s;}},
+ {name:'二分割',tip:'空と地面、水面と景色などを半分ずつに。対称な被写体と好相性です。',variants:2,
+  draw:(W,H,v,g)=>v?g.L(W/2,0,W/2,H):g.L(0,H/2,W,H/2)},
+ {name:'四分割',tip:'三分割より細かく配置を決めたいときに。線上や交点に要素を置きます。',
+  draw:(W,H,v,g)=>{let s='';for(const t of [.25,.5,.75]){const op=t===.5?1:.65;s+=g.L(W*t,0,W*t,H,op)+g.L(0,H*t,W,H*t,op);}return s;}},
+ {name:'対角線',tip:'被写体を対角線に沿わせると、奥行きと動きが生まれます。',variants:2,mirror:true,
+  draw:(W,H,v,g)=>{const len=Math.hypot(W,H),dx=W/len,dy=-H/len;
+   const foot=(px,py)=>{const t=(px-0)*dx+(py-H)*dy;return [t*dx,H+t*dy];};
+   const a=foot(0,0),b=foot(W,H);
+   return g.L(0,H,W,0)+g.L(0,0,a[0],a[1],.55,'6 6')+g.L(W,H,b[0],b[1],.55,'6 6')+g.D(a[0],a[1])+g.D(b[0],b[1]);}},
+ {name:'斜線',tip:'道や手すり、影などを斜めに入れて、リズムとスピード感を出します。',variants:2,mirror:true,
+  draw:(W,H,v,g)=>{let s='';for(const o of [-.38,0,.38])s+=g.L(0,H*(.95+o),W,H*(.3+o),o?.7:1);return s;}},
+ {name:'三角',tip:'底辺を広く、頂点に視線を集めます。山や人物の全身に安定感が出ます。',
+  draw:(W,H,v,g)=>g.P(`M${f(W*.08)} ${f(H*.86)} L${f(W/2)} ${f(H*.2)} L${f(W*.92)} ${f(H*.86)} Z`)+g.D(W/2,H*.2)},
+ {name:'逆三角',tip:'上を広く下をすぼめると、不安定さから緊張感や動きが生まれます。',
+  draw:(W,H,v,g)=>g.P(`M${f(W*.08)} ${f(H*.14)} L${f(W/2)} ${f(H*.8)} L${f(W*.92)} ${f(H*.14)} Z`)+g.D(W/2,H*.8)},
+ {name:'シンメトリー',tip:'中心線で左右（または上下）を対称に。建物や水面の映り込みに向きます。',variants:2,
+  draw:(W,H,v,g)=>{const a=Math.min(W,H)*.06;
+   if(!v)return g.L(W/2,0,W/2,H,1,'10 7')+g.P(`M${f(W/2-a*2)} ${f(H/2-a)} l${f(-a)} ${f(a)} l${f(a)} ${f(a)}`,.8)+g.P(`M${f(W/2+a*2)} ${f(H/2-a)} l${f(a)} ${f(a)} l${f(-a)} ${f(a)}`,.8);
+   return g.L(0,H/2,W,H/2,1,'10 7')+g.P(`M${f(W/2-a)} ${f(H/2-a*2)} l${f(a)} ${f(-a)} l${f(a)} ${f(a)}`,.8)+g.P(`M${f(W/2-a)} ${f(H/2+a*2)} l${f(a)} ${f(a)} l${f(a)} ${f(-a)}`,.8);}},
+ {name:'黄金螺旋',tip:'渦の中心に主役を置くと、自然で美しいバランスになります。',variants:4,mirror:true,
+  draw:(W,H,v,g)=>{const land=W>=H;
+   const map=([u,t])=>land?[u/PHI*W,t*H]:[(1-t)*W,u/PHI*H];
+   let s='';for(const t of [1-1/PHI,1/PHI]){s+=g.L(W*t,0,W*t,H,.4)+g.L(0,H*t,W,H*t,.4);}
+   s+=g.PL(SPIRAL.map(map));const e=map(EYE);return s+g.D(e[0],e[1]);}},
+ {name:'S字',tip:'川や道のS字カーブで、視線を手前から奥へ導きます。',variants:2,mirror:true,
+  draw:(W,H,v,g)=>g.P(`M${f(W*.32)} ${f(H)} C${f(W*.95)} ${f(H*.82)} ${f(W*.92)} ${f(H*.56)} ${f(W*.5)} ${f(H*.5)} S${f(W*.06)} ${f(H*.2)} ${f(W*.62)} 0`)},
+ {name:'C字',tip:'海岸線や弧を描く道で、画面を包み込むような広がりを出します。',variants:2,mirror:true,
+  draw:(W,H,v,g)=>g.P(`M${f(W*.82)} ${f(H*.04)} C${f(W*.02)} ${f(H*.18)} ${f(W*.02)} ${f(H*.82)} ${f(W*.82)} ${f(H*.96)}`)},
+ {name:'放射線',tip:'一点から広がる線で奥行きと迫力を。中心の点に主役を置きます。',variants:2,
+  draw:(W,H,v,g)=>{const px=W/2,py=v?H*2/3:H/2,R=Math.hypot(W,H);let s='';
+   for(let i=0;i<16;i++){const a=i/16*Math.PI*2+Math.PI/16;s+=g.L(px+Math.cos(a)*R*.08,py+Math.sin(a)*R*.08,px+Math.cos(a)*R,py+Math.sin(a)*R,.75);}
+   return s+g.D(px,py);}},
+ {name:'トンネル',tip:'窓やトンネル、木々で手前に枠を作り、奥の主役を囲みます。',
+  draw:(W,H,v,g)=>{const ix=W*.16,iy=H*.14,r=Math.min(W,H)*.06,w=W-ix*2,h=H-iy*2;
+   const inner=`M${f(ix+r)} ${f(iy)} h${f(w-2*r)} a${f(r)} ${f(r)} 0 0 1 ${f(r)} ${f(r)} v${f(h-2*r)} a${f(r)} ${f(r)} 0 0 1 ${f(-r)} ${f(r)} h${f(-(w-2*r))} a${f(r)} ${f(r)} 0 0 1 ${f(-r)} ${f(-r)} v${f(-(h-2*r))} a${f(r)} ${f(r)} 0 0 1 ${f(r)} ${f(-r)} Z`;
+   return g.SHADE(`M0 0 H${f(W)} V${f(H)} H0 Z `+inner,.28)+g.P(inner)+g.D(W/2,H/2);}},
+ {name:'パターン',tip:'同じ形の繰り返しで画面を埋めます。ひとつだけ崩すと印象的になります。',
+  draw:(W,H,v,g)=>{const cols=4,rows=Math.max(3,Math.round(cols*H/W)),cw=W/cols,ch=H/rows,r=Math.min(cw,ch)*.24;let s='';
+   for(let i=1;i<cols;i++)s+=g.L(cw*i,0,cw*i,H,.3);for(let j=1;j<rows;j++)s+=g.L(0,ch*j,W,ch*j,.3);
+   for(let i=0;i<cols;i++)for(let j=0;j<rows;j++)s+=g.C(cw*(i+.5),ch*(j+.5),r,.85);return s;}}
+];
+
+function buildInner(c, W, H, v, sw, col, acc){
+  const g = prims(sw, col, acc);
+  let inner = c.draw(W, H, v, g);
+  if(c.mirror && v){
+    const mx = v & 1, my = v & 2;
+    inner = `<g transform="translate(${mx?W:0} ${my?H:0}) scale(${mx?-1:1} ${my?-1:1})">${inner}</g>`;
+  }
+  return inner;
+}
+function buildSvg(c, W, H, v, sw){
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`+
+    `<defs><filter id="sh" x="-5%" y="-5%" width="110%" height="110%"><feDropShadow dx="0" dy="0" stdDeviation="${f(sw*.8)}" flood-color="#000" flood-opacity=".65"/></filter></defs>`+
+    `<g filter="url(#sh)">${buildInner(c,W,H,v,sw,GUIDE,ACC)}</g></svg>`;
+}
+
+/* state */
+const $ = id => document.getElementById(id);
+const vf=$('vf'), video=$('video'), still=$('still'), guide=$('guide');
+let idx=1, variant=0, opLevel=0, burn=false, facing='environment', stream=null, source=null, downloads=null;
+const OPS=[{l:'濃い',o:1},{l:'薄い',o:.5},{l:'非表示',o:0}];
+
+/* chips */
+const chips=$('chips');
+COMPS.forEach((c,i)=>{
+  const b=document.createElement('button');b.className='chip';b.type='button';
+  b.innerHTML=`<svg viewBox="0 0 30 40" aria-hidden="true"><rect x=".75" y=".75" width="28.5" height="38.5" rx="3" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1"/>${buildInner(c,30,40,0,1.2,'currentColor','currentColor')}</svg>${c.name}`;
+  b.addEventListener('click',()=>select(i));
+  chips.appendChild(b);
+});
+
+function render(){
+  const W=vf.clientWidth,H=vf.clientHeight; if(!W||!H)return;
+  const c=COMPS[idx], sw=Math.max(1.5,Math.min(W,H)/240);
+  guide.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  guide.innerHTML=buildSvg(c,W,H,variant,sw).replace(/^<svg[^>]*>|<\/svg>$/g,'');
+  guide.style.opacity=OPS[opLevel].o;
+}
+function select(i){
+  idx=(i+COMPS.length)%COMPS.length; variant=0;
+  const c=COMPS[idx];
+  $('cName').textContent=c.name+'構図'; $('cTip').textContent=c.tip;
+  [...chips.children].forEach((b,j)=>b.setAttribute('aria-pressed',j===idx));
+  chips.children[idx].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+  $('variantBtn').disabled=!(c.variants>1);
+  render();
+}
+$('variantBtn').addEventListener('click',()=>{const n=COMPS[idx].variants||1;variant=(variant+1)%n;render();});
+$('opBtn').addEventListener('click',()=>{opLevel=(opLevel+1)%OPS.length;$('opLabel').textContent=OPS[opLevel].l;render();});
+$('burnBtn').addEventListener('click',e=>{burn=!burn;e.currentTarget.setAttribute('aria-pressed',burn);});
+new ResizeObserver(render).observe(vf);
+
+/* swipe to change composition */
+let sx=null,sy=null;
+vf.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;});
+vf.addEventListener('pointerup',e=>{
+  if(sx===null)return;const dx=e.clientX-sx,dy=e.clientY-sy;sx=null;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3)select(idx+(dx<0?1:-1));
+});
+
+/* camera */
+function showErr(msg){const el=$('err');el.textContent=msg;el.hidden=false;$('start').style.display='flex';}
+async function startCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){showErr('このブラウザではカメラを使えません。「撮った写真で確認する」をお試しください。');return;}
+  try{
+    stream?.getTracks().forEach(t=>t.stop());
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:1440}}});
+    video.srcObject=stream; await video.play();
+    video.classList.toggle('mirror',facing==='user');
+    video.style.display='block'; still.style.display='none'; source='video';
+    $('start').style.display='none'; $('shutter').disabled=false; $('flipCam').hidden=false;
+  }catch(err){
+    const n=err&&err.name;
+    showErr(n==='NotAllowedError'?'カメラの使用が許可されませんでした。ブラウザの設定でカメラを許可してから再度お試しください。':
+      n==='NotFoundError'?'カメラが見つかりませんでした。':'カメラを起動できませんでした（'+(n||'不明なエラー')+'）。');
+  }
+}
+$('startCam').addEventListener('click',startCamera);
+$('flipCam').addEventListener('click',()=>{facing=facing==='environment'?'user':'environment';startCamera();});
+$('pickPhoto').addEventListener('click',()=>$('file').click());
+$('file').addEventListener('change',e=>{
+  const fl=e.target.files[0];if(!fl)return;
+  still.onload=()=>{still.style.display='block';video.style.display='none';source='still';
+    $('start').style.display='none';$('shutter').disabled=false;};
+  still.src=URL.createObjectURL(fl); e.target.value='';
+});
+
+/* capture */
+let lastBlob=null;
+async function capture(){
+  const el=source==='video'?video:still;
+  const iw=source==='video'?video.videoWidth:still.naturalWidth, ih=source==='video'?video.videoHeight:still.naturalHeight;
+  if(!iw||!ih)return;
+  const Dw=vf.clientWidth,Dh=vf.clientHeight,s=Math.max(Dw/iw,Dh/ih);
+  const cw=Math.round(Dw/s),ch=Math.round(Dh/s),sx0=(iw-cw)/2,sy0=(ih-ch)/2;
+  const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;const ctx=cv.getContext('2d');
+  ctx.save(); if(source==='video'&&facing==='user'){ctx.translate(cw,0);ctx.scale(-1,1);}
+  ctx.drawImage(el,sx0,sy0,cw,ch,0,0,cw,ch); ctx.restore();
+  if(burn&&OPS[opLevel].o>0){
+    const svg=buildSvg(COMPS[idx],cw,ch,variant,Math.max(2,Math.min(cw,ch)/240));
+    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+    await new Promise(res=>{const im=new Image();im.onload=()=>{ctx.globalAlpha=OPS[opLevel].o;ctx.drawImage(im,0,0,cw,ch);ctx.globalAlpha=1;URL.revokeObjectURL(url);res();};im.onerror=res;im.src=url;});
+  }
+  lastBlob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
+  $('shot').src=URL.createObjectURL(lastBlob); $('sheetMsg').textContent=''; $('sheet').classList.add('open');
+}
+$('shutter').addEventListener('click',()=>{
+  const fl=$('flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
+  navigator.vibrate?.(12); capture();
+});
+$('retake').addEventListener('click',()=>$('sheet').classList.remove('open'));
+
+/* saving: Claude artifact downloads capability, else a normal download link */
+(async()=>{try{if(window.claude?.use)downloads=await window.claude.use('downloads');}catch(e){downloads=null;}})();
+function fname(){const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return `kozu-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.jpg`;}
+$('save').addEventListener('click',async()=>{
+  if(!lastBlob)return; const msg=$('sheetMsg'), name=fname();
+  if(downloads){
+    try{await downloads.save({filename:name,data:lastBlob});msg.textContent='保存しました';}
+    catch(e){msg.textContent=e?.code==='declined'?'保存をキャンセルしました':'保存できませんでした（'+(e?.code||'エラー')+'）';}
+    return;
+  }
+  const file=new File([lastBlob],name,{type:'image/jpeg'});
+  if(navigator.canShare?.({files:[file]})){
+    try{await navigator.share({files:[file]});msg.textContent='「画像を保存」で写真アプリに保存できます';}
+    catch(e){if(e?.name!=='AbortError')msg.textContent='共有できませんでした';}
+    return;
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(lastBlob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  msg.textContent='保存しました';
+});
+
+select(1);
+})();
+</script>
+</body>
+</html>
