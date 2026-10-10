@@ -107,17 +107,43 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .ghost{min-width:220px;height:46px;font-size:.875rem;color:var(--dim)}
 .err{color:#FFC98A;font-size:.8125rem;line-height:1.7;max-width:22em;margin-top:6px}
 
-/* preview */
+/* preview + editing */
 .sheet{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;background:#000;
-  padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 16px);
+  padding:env(safe-area-inset-top,0px) 0 calc(env(safe-area-inset-bottom,0px) + 10px);
   visibility:hidden;opacity:0;transform:translateY(16px);transition:opacity .25s,transform .25s,visibility 0s .25s}
 .sheet.open{visibility:visible;opacity:1;transform:none;transition:opacity .25s,transform .25s}
-.sheet .imgwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-.sheet img{max-width:100%;max-height:100%;border-radius:6px}
-.sheet .msg{text-align:center;font-size:.8125rem;min-height:1.6em;padding-top:12px;color:var(--dim)}
-.sheet .acts{display:flex;gap:12px;justify-content:center;padding-top:10px}
-.sheet .acts button{height:50px;border-radius:25px;padding:0 28px;font-size:.9375rem}
-.sheet .save{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.sbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px}
+.sbar .close{height:36px;padding:0 6px;font-size:.9375rem;color:var(--ink)}
+.acts2{display:flex;gap:8px}
+.sbar .share{height:36px;border-radius:18px;padding:0 16px;font-size:.875rem}
+.sbar .share:disabled{opacity:.5}
+.sbar .save{height:36px;border-radius:18px;padding:0 18px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:.875rem}
+.sbar .save:disabled{opacity:.5}
+.imgwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 14px;touch-action:none}
+.imgwrap canvas{max-width:100%;max-height:100%;border-radius:4px;display:block}
+.diag{margin:10px auto 0;padding:0 22px;max-width:30em;text-align:center;font-size:.75rem;line-height:1.7;color:var(--dim);min-height:1.7em}
+.presets{display:flex;gap:12px;overflow-x:auto;padding:12px 18px 4px;scrollbar-width:none;justify-content:safe center}
+.presets::-webkit-scrollbar{display:none}
+.pre{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.6875rem;color:var(--dim)}
+.pre canvas{width:58px;height:58px;border-radius:10px;display:block;outline:1.5px solid transparent;outline-offset:2px;transition:outline-color .15s}
+.pre[aria-pressed="true"]{color:var(--accent)}
+.pre[aria-pressed="true"] canvas{outline-color:var(--accent)}
+.tools{display:flex;justify-content:center;gap:4px;padding:12px 10px 0}
+.tool{display:flex;flex-direction:column;align-items:center;min-width:70px;padding:4px 6px;font-size:.75rem;color:var(--dim)}
+.tool b{font-weight:500;font-size:.6875rem;font-variant-numeric:tabular-nums;margin-top:2px;opacity:.8}
+.tool[aria-pressed="true"]{color:var(--ink)}
+.tool[aria-pressed="true"] b{color:var(--accent);opacity:1}
+.slider{padding:6px 28px 0}
+.slider input{-webkit-appearance:none;appearance:none;width:100%;height:36px;background:transparent;margin:0}
+.slider input::-webkit-slider-runnable-track{height:2px;border-radius:1px;
+  background:linear-gradient(to right,var(--faint) calc(50% - 1px),var(--ink) calc(50% - 1px),var(--ink) calc(50% + 1px),var(--faint) calc(50% + 1px))}
+.slider input::-moz-range-track{height:2px;background:var(--faint)}
+.slider input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;margin-top:-10px;box-shadow:0 0 0 4px rgba(255,181,71,.35)}
+.slider input::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff}
+.msg{text-align:center;font-size:.75rem;min-height:1.5em;padding-top:4px;color:var(--accent)}
+.msg:empty::before{content:"写真を長押しすると補正前を表示";color:var(--dim)}
+.appshare{margin-top:18px;display:inline-flex;align-items:center;gap:6px;font-size:.8125rem;color:var(--dim);height:40px}
+.appshare svg{width:16px;height:16px}
 input[type=file]{display:none}
 @media (prefers-reduced-motion:reduce){
   .flash.on,.bigname.show{animation:none}
@@ -174,15 +200,21 @@ input[type=file]{display:none}
   <button class="cta" id="startCam">カメラを起動</button>
   <button class="ghost" id="pickPhoto">撮った写真で構図を確認</button>
   <p class="err" id="err" hidden></p>
+  <button class="appshare" id="appShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg>このアプリを友だちに教える</button>
+  <p class="err" id="appMsg" aria-live="polite"></p>
 </section>
 
-<div class="sheet" id="sheet" role="dialog" aria-label="撮影した写真">
-  <div class="imgwrap"><img id="shot" alt="撮影した写真"></div>
-  <div class="msg" id="sheetMsg" aria-live="polite"></div>
-  <div class="acts">
-    <button class="glass" id="retake">閉じる</button>
-    <button class="save" id="save">保存する</button>
+<div class="sheet" id="sheet" role="dialog" aria-label="写真の補正">
+  <div class="sbar">
+    <button class="close" id="retake">閉じる</button>
+    <span class="acts2"><button class="share glass" id="shareBtn">共有</button><button class="save" id="save">保存</button></span>
   </div>
+  <div class="imgwrap" id="imgwrap"><canvas id="pv" aria-label="補正後の写真"></canvas></div>
+  <p class="diag" id="diag"></p>
+  <div class="presets" id="presets"></div>
+  <div class="tools" id="tools"></div>
+  <div class="slider"><input type="range" id="rng" min="-100" max="100" step="1" value="0" aria-label="補正の強さ"></div>
+  <div class="msg" id="sheetMsg" aria-live="polite"></div>
 </div>
 <input type="file" id="file" accept="image/*">
 
@@ -377,54 +409,174 @@ $('file').addEventListener('change',e=>{
   still.src=URL.createObjectURL(fl); e.target.value='';
 });
 
-/* capture */
-let lastBlob=null;
+/* capture: keep the photo without guides so edits never tint the guide lines */
+let shot=null;
 async function capture(){
   const el=source==='video'?video:still;
   const iw=source==='video'?video.videoWidth:still.naturalWidth, ih=source==='video'?video.videoHeight:still.naturalHeight;
   if(!iw||!ih)return;
   const Dw=vf.clientWidth,Dh=vf.clientHeight,s=Math.max(Dw/iw,Dh/ih);
   const cw=Math.round(Dw/s),ch=Math.round(Dh/s),sx0=(iw-cw)/2,sy0=(ih-ch)/2;
-  const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;const ctx=cv.getContext('2d');
+  const base=document.createElement('canvas');base.width=cw;base.height=ch;const ctx=base.getContext('2d');
   ctx.save(); if(source==='video'&&facing==='user'){ctx.translate(cw,0);ctx.scale(-1,1);}
   ctx.drawImage(el,sx0,sy0,cw,ch,0,0,cw,ch); ctx.restore();
-  if(burn&&OPS[opLevel].o>0){
-    const svg=buildSvg(COMPS[idx],cw,ch,variant,Math.max(2,Math.min(cw,ch)/240));
-    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
-    await new Promise(res=>{const im=new Image();im.onload=()=>{ctx.globalAlpha=OPS[opLevel].o;ctx.drawImage(im,0,0,cw,ch);ctx.globalAlpha=1;URL.revokeObjectURL(url);res();};im.onerror=res;im.src=url;});
-  }
-  lastBlob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
-  const u=URL.createObjectURL(lastBlob);
-  $('shot').src=u; $('thumbImg').src=u; $('thumb').classList.add('has');
-  openSheet();
+  const small=scaled(base,1280), tile=squareTile(base,120);
+  shot={base,small,smallData:small.getContext('2d').getImageData(0,0,small.width,small.height),tile,
+    guide:(burn&&OPS[opLevel].o>0)?{c:COMPS[idx],v:variant,o:OPS[opLevel].o}:null};
+  const a=analyze(small); shot.auto=a.p; shot.note=a.note;
+  const pv=$('pv');pv.width=small.width;pv.height=small.height;
+  $('thumbImg').src=tile.toDataURL('image/jpeg',.8); $('thumb').classList.add('has');
+  buildPresets(); applyPreset('auto'); openSheet();
 }
+function scaled(src,max){
+  const k=Math.min(1,max/Math.max(src.width,src.height));
+  const c=document.createElement('canvas');c.width=Math.round(src.width*k);c.height=Math.round(src.height*k);
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(src,0,0,c.width,c.height);return c;
+}
+function squareTile(src,n){
+  const m=Math.min(src.width,src.height),c=document.createElement('canvas');c.width=c.height=n;
+  c.getContext('2d').drawImage(src,(src.width-m)/2,(src.height-m)/2,m,m,0,0,n,n);return c;
+}
+
+/* analysis: brightness, tonal range, color cast and saturation */
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function analyze(cv){
+  const t=scaled(cv,200),d=t.getContext('2d').getImageData(0,0,t.width,t.height).data,n=d.length/4;
+  const hist=new Uint32Array(256);let sr=0,sg=0,sb=0,ss=0;
+  for(let i=0;i<d.length;i+=4){const r=d[i],g=d[i+1],b=d[i+2];
+    hist[Math.round(.299*r+.587*g+.114*b)]++;sr+=r;sg+=g;sb+=b;
+    const mx=Math.max(r,g,b),mn=Math.min(r,g,b);ss+=mx?(mx-mn)/mx:0;}
+  const pct=q=>{let acc=0;for(let i=0;i<256;i++){acc+=hist[i];if(acc>=n*q)return i;}return 255;};
+  let mean=0;for(let i=0;i<256;i++)mean+=i*hist[i];mean/=n*255;
+  const range=(pct(.98)-pct(.02))/255, cast=(sb-sr)/n/255, msat=ss/n;
+  const p={exp:0,con:0,sat:0,tmp:0,fade:0},note=[];
+  if(mean<.42){p.exp=Math.round(clamp((.48-mean)*220,0,45));note.push('少し暗いので明るく');}
+  else if(mean>.62){p.exp=-Math.round(clamp((mean-.55)*180,0,35));note.push('明るすぎる部分を抑えて');}
+  if(range<.8){p.con=Math.round(clamp((.8-range)*90,0,30));note.push('メリハリを強めに');}
+  if(cast<-.12){note.push('夕景のような暖かい色はそのまま活かして');}
+  else if(Math.abs(cast)>.035){p.tmp=Math.round(clamp(cast*200,-25,25));note.push(cast>0?'青みを抑えて自然な色に':'黄みを抑えて自然な色に');}
+  if(msat<.22){p.sat=Math.round(clamp((.3-msat)*150,0,25));note.push('色を少し鮮やかに');}
+  const text=note.length?'おすすめ補正：'+note.join('、')+'しました。':'バランスの良い写真です。補正はほとんど必要ありません。';
+  return {p,note:text};
+}
+
+/* processing: per-channel lookup tables + saturation */
+function processData(src,p){
+  const g=Math.pow(2,-p.exp/80),c=1+p.con/100,f=p.fade/100*.25,s=1+p.sat/100;
+  const lut=k=>{const L=new Uint8ClampedArray(256);for(let i=0;i<256;i++){let v=Math.min(1,i/255*k);v=Math.pow(v,g);v=(v-.5)*c+.5;v=f+v*(1-f);L[i]=Math.round(clamp(v,0,1)*255);}return L;};
+  const LR=lut(1+.15*p.tmp/100),LG=lut(1+.02*p.tmp/100),LB=lut(1-.15*p.tmp/100);
+  const out=new ImageData(src.width,src.height),a=src.data,o=out.data;
+  for(let i=0;i<a.length;i+=4){let r=LR[a[i]],gg=LG[a[i+1]],b=LB[a[i+2]];
+    if(s!==1){const L=.299*r+.587*gg+.114*b;r=L+(r-L)*s;gg=L+(gg-L)*s;b=L+(b-L)*s;}
+    o[i]=r;o[i+1]=gg;o[i+2]=b;o[i+3]=255;}
+  return out;
+}
+
+/* presets and sliders */
+const ADJ=[{k:'exp',n:'明るさ'},{k:'con',n:'コントラスト'},{k:'sat',n:'彩度'},{k:'tmp',n:'色温度'}];
+const PRESETS=[
+  {k:'orig',n:'オリジナル',f:a=>({exp:0,con:0,sat:0,tmp:0,fade:0})},
+  {k:'auto',n:'おすすめ',f:a=>({...a})},
+  {k:'vivid',n:'ビビッド',f:a=>({...a,con:a.con+15,sat:a.sat+35})},
+  {k:'film',n:'フィルム',f:a=>({...a,con:a.con-12,sat:a.sat-18,tmp:a.tmp+14,fade:12})},
+  {k:'mono',n:'モノクロ',f:a=>({...a,con:a.con+18,sat:-100,tmp:0})}
+];
+let params={exp:0,con:0,sat:0,tmp:0,fade:0}, tool='exp', rafId=0;
+const fix=p=>{for(const k in p)p[k]=clamp(Math.round(p[k]),-100,100);return p;};
+function buildPresets(){
+  const box=$('presets');box.innerHTML='';
+  const td=shot.tile.getContext('2d').getImageData(0,0,shot.tile.width,shot.tile.height);
+  PRESETS.forEach(pr=>{
+    const b=document.createElement('button');b.className='pre';b.type='button';b.dataset.k=pr.k;
+    const c=document.createElement('canvas');c.width=c.height=shot.tile.width;
+    c.getContext('2d').putImageData(processData(td,fix(pr.f(shot.auto))),0,0);
+    b.append(c,pr.n);b.addEventListener('click',()=>applyPreset(pr.k));box.appendChild(b);
+  });
+}
+function markPreset(k){[...$('presets').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k));}
+function applyPreset(k){
+  params=fix(PRESETS.find(p=>p.k===k).f(shot.auto));markPreset(k);
+  $('diag').textContent=k==='orig'?'補正前の写真です。':shot.note;
+  updateTools();schedule();
+}
+const tools=$('tools');
+ADJ.forEach(a=>{const b=document.createElement('button');b.className='tool';b.type='button';b.dataset.k=a.k;
+  b.innerHTML=`${a.n}<b>0</b>`;b.addEventListener('click',()=>{tool=a.k;updateTools();});tools.appendChild(b);});
+function updateTools(){
+  [...tools.children].forEach(b=>{const v=params[b.dataset.k];b.setAttribute('aria-pressed',b.dataset.k===tool);
+    b.querySelector('b').textContent=v>0?'+'+v:v;});
+  $('rng').value=params[tool];
+  $('rng').setAttribute('aria-label',ADJ.find(a=>a.k===tool).n);
+}
+$('rng').addEventListener('input',e=>{params[tool]=+e.target.value;markPreset('');updateTools();schedule();});
+$('rng').addEventListener('dblclick',()=>{params[tool]=0;markPreset('');updateTools();schedule();});
+function schedule(){cancelAnimationFrame(rafId);rafId=requestAnimationFrame(()=>$('pv').getContext('2d').putImageData(processData(shot.smallData,params),0,0));}
+const wrap=$('imgwrap');
+wrap.addEventListener('pointerdown',()=>{if(shot){cancelAnimationFrame(rafId);$('pv').getContext('2d').putImageData(shot.smallData,0,0);}});
+['pointerup','pointercancel','pointerleave'].forEach(t=>wrap.addEventListener(t,()=>{if(shot)schedule();}));
+wrap.addEventListener('contextmenu',e=>e.preventDefault());
+
 function openSheet(){$('sheetMsg').textContent='';$('sheet').classList.add('open');}
 $('shutter').addEventListener('click',()=>{
   const fl=$('flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
   navigator.vibrate?.(12); capture();
 });
-$('thumb').addEventListener('click',()=>{if(lastBlob)openSheet();});
+$('thumb').addEventListener('click',()=>{if(shot)openSheet();});
 $('retake').addEventListener('click',()=>$('sheet').classList.remove('open'));
+
+/* full-resolution render for saving */
+async function finalBlob(){
+  const b=shot.base,out=document.createElement('canvas');out.width=b.width;out.height=b.height;
+  const ctx=out.getContext('2d');
+  ctx.putImageData(processData(b.getContext('2d').getImageData(0,0,b.width,b.height),params),0,0);
+  const gd=shot.guide;
+  if(gd){
+    const svg=buildSvg(gd.c,b.width,b.height,gd.v,Math.max(2,Math.min(b.width,b.height)/240));
+    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+    await new Promise(res=>{const im=new Image();im.onload=()=>{ctx.globalAlpha=gd.o;ctx.drawImage(im,0,0);ctx.globalAlpha=1;URL.revokeObjectURL(url);res();};im.onerror=res;im.src=url;});
+  }
+  return new Promise(r=>out.toBlob(r,'image/jpeg',.92));
+}
 
 /* saving: Claude artifact downloads, else the share sheet (iPhone: 画像を保存), else a download link */
 (async()=>{try{if(window.claude?.use)downloads=await window.claude.use('downloads');}catch(e){downloads=null;}})();
 function fname(){const d=new Date(),p=n=>String(n).padStart(2,'0');
   return `kozu-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.jpg`;}
-$('save').addEventListener('click',async()=>{
-  if(!lastBlob)return; const msg=$('sheetMsg'), name=fname();
+const APP_URL='https://tennis226243-coder.github.io/kozu-camera/';
+async function busy(fn){
+  const msg=$('sheetMsg'),btns=[$('save'),$('shareBtn')];
+  btns.forEach(x=>x.disabled=true);msg.textContent='書き出し中…';
+  try{const blob=await finalBlob();msg.textContent='';await fn(blob,msg);}
+  finally{btns.forEach(x=>x.disabled=false);}
+}
+function shareable(blob,name){const file=new File([blob],name,{type:'image/jpeg'});return navigator.canShare?.({files:[file]})?file:null;}
+async function shareFile(file,msg,okText){
+  try{await navigator.share({files:[file]});msg.textContent=okText;}
+  catch(e){if(e?.name!=='AbortError')msg.textContent='共有できませんでした';}
+}
+$('save').addEventListener('click',()=>{if(shot)busy(async(blob,msg)=>{
+  const name=fname();
   if(downloads){
-    try{await downloads.save({filename:name,data:lastBlob});msg.textContent='保存しました';}
+    try{await downloads.save({filename:name,data:blob});msg.textContent='保存しました';}
     catch(e){msg.textContent=e?.code==='declined'?'保存をキャンセルしました':'保存できませんでした（'+(e?.code||'エラー')+'）';}
     return;
   }
-  const file=new File([lastBlob],name,{type:'image/jpeg'});
-  if(navigator.canShare?.({files:[file]})){
-    try{await navigator.share({files:[file]});msg.textContent='「画像を保存」で写真アプリに保存できます';}
-    catch(e){if(e?.name!=='AbortError')msg.textContent='共有できませんでした';}
-    return;
-  }
-  const a=document.createElement('a');a.href=URL.createObjectURL(lastBlob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  const file=shareable(blob,name);
+  if(file)return shareFile(file,msg,'「画像を保存」で写真アプリに保存できます');
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
   msg.textContent='保存しました';
+});});
+$('shareBtn').addEventListener('click',()=>{if(shot)busy(async(blob,msg)=>{
+  const file=shareable(blob,fname());
+  if(file)return shareFile(file,msg,'共有しました');
+  msg.textContent='この画面では共有できません。保存してから写真アプリで共有してください';
+});});
+$('appShare').addEventListener('click',async()=>{
+  const m=$('appMsg'),data={title:'カメラ',text:'15の構図ガイドで撮影できるカメラアプリ',url:APP_URL};
+  if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e?.name==='AbortError')return;}}
+  try{await navigator.clipboard.writeText(APP_URL);m.textContent='URLをコピーしました';}
+  catch(e){m.textContent=APP_URL;}
+  m.hidden=false;
 });
 
 select(1,{instant:true});
