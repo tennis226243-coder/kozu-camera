@@ -441,10 +441,10 @@ function focusSupported(){
   return !!(c.focusMode&&c.focusMode.length&&s.pointsOfInterest);
 }
 async function tapFocus(cx,cy){
-  if(source!=='video'||!track)return;
+  if(!source||(source==='video'&&!track))return;
   const ring=$('focusRing'),r=vf.getBoundingClientRect(),x=cx-r.left,y=cy-r.top;
   ring.style.left=x+'px';ring.style.top=y+'px';
-  if(!focusSupported()){
+  if(source==='still'||!focusSupported()){
     /* iPhone: remember the tapped spot as the subject; it is sharpened locally after the shot */
     subject={u:x/r.width,v:y/r.height};
     ring.classList.remove('on','ok','dim');void ring.offsetWidth;ring.classList.add('on');
@@ -574,7 +574,7 @@ $('flipCam').addEventListener('click',()=>{facing=facing==='environment'?'user':
 $('pickPhoto').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',e=>{
   const fl=e.target.files[0];if(!fl)return;
-  still.onload=()=>{still.style.display='block';video.style.display='none';source='still';$('zoombar').hidden=true;enterViewfinder();};
+  still.onload=()=>{clearSubject();still.style.display='block';video.style.display='none';source='still';$('zoombar').hidden=true;enterViewfinder();};
   still.src=URL.createObjectURL(fl); e.target.value='';
 });
 
@@ -603,6 +603,32 @@ function sharpen(cv,amount){
 }
 /* subject emphasis: stronger detail + local contrast around the tapped point, fading out smoothly.
    Differences are clamped so edges do not get white halos. */
+/* subject deblur: Richardson-Lucy deconvolution (Gaussian blur model) on the area around the tapped point.
+   It actually rebuilds edges that the soft video frame lost; changes are clamped to avoid ringing/halos. */
+function deblurSubject(cv,u,v){
+  const W=cv.width,H=cv.height,M=Math.min(W,H);
+  const rb=Math.max(W,H)>2200?2:1,half=Math.round(.24*M),pad=12;
+  const cx=Math.round(u*W),cy=Math.round(v*H);
+  const x0=clamp(cx-half-pad,0,W-1),y0=clamp(cy-half-pad,0,H-1),x1=clamp(cx+half+pad,0,W),y1=clamp(cy+half+pad,0,H);
+  const w=x1-x0,h=y1-y0;if(w<32||h<32)return;
+  const ctx=cv.getContext('2d'),img=ctx.getImageData(x0,y0,w,h),d=img.data,n=w*h;
+  const L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=Math.max(1,.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2]);
+  const g=a=>blur(blur(blur(a,w,h,rb),w,h,rb),w,h,rb);
+  let est=Float32Array.from(L);
+  for(let it=0;it<12;it++){
+    const c=g(est),ratio=new Float32Array(n);
+    for(let j=0;j<n;j++)ratio[j]=L[j]/Math.max(1,c[j]);
+    const cr=g(ratio);
+    for(let j=0;j<n;j++)est[j]=clamp(est[j]*cr[j],0,300);
+  }
+  const sg=half*.62,k2=1/(2*sg*sg);
+  for(let y=0,j=0;y<h;y++){const dy=(y+y0-cy)*(y+y0-cy);
+    for(let x=0;x<w;x++,j++){
+      const edge=Math.min(x,y,w-1-x,h-1-y)/pad,wt=Math.exp(-((x+x0-cx)*(x+x0-cx)+dy)*k2)*clamp(edge,0,1);
+      if(wt<.01)continue;
+      const k=clamp(est[j]-L[j],-45,45)*wt,i=j*4;d[i]+=k;d[i+1]+=k;d[i+2]+=k;}}
+  ctx.putImageData(img,x0,y0);
+}
 function localSharpen(cv,u,v){
   const W=cv.width,H=cv.height,x=cv.getContext('2d'),img=x.getImageData(0,0,W,H),d=img.data,n=W*H;
   const L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];
@@ -611,7 +637,7 @@ function localSharpen(cv,u,v){
   const cx=u*W,cy=v*H,sg=.2*Math.min(W,H),k2=1/(2*sg*sg);
   for(let y=0,j=0;y<H;y++){const dy=(y-cy)*(y-cy);
     for(let xx=0;xx<W;xx++,j++){const w=Math.exp(-((xx-cx)*(xx-cx)+dy)*k2);if(w<.02)continue;
-      const k=w*(clamp((L[j]-B1[j])*1.1,-32,32)+clamp((L[j]-B2[j])*.3,-22,22)),i=j*4;
+      const k=w*(clamp((L[j]-B1[j])*.6,-20,20)+clamp((L[j]-B2[j])*.3,-22,22)),i=j*4;
       d[i]+=k;d[i+1]+=k;d[i+2]+=k;}}
   x.putImageData(img,0,0);
 }
@@ -634,9 +660,9 @@ async function capture(){
       const sh=subject?sharpness(video,iw,ih,lens==='front'?sx0+(1-subject.u)*cw:sx0+subject.u*cw,sy0+subject.v*ch):sharpness(video,iw,ih);
       if(sh>best){best=sh;draw(spare);[base,spare]=[spare,base];}
     }
-    sharpen(base,.45);
-    if(subject)localSharpen(base,subject.u,subject.v);
+    sharpen(base,.55);
   }else draw(base);
+  if(subject){deblurSubject(base,subject.u,subject.v);localSharpen(base,subject.u,subject.v);}
   const small=scaled(base,1280), tile=squareTile(base,120);
   shot={base,small,smallData:small.getContext('2d').getImageData(0,0,small.width,small.height),tile,
     guide:(burn&&OPS[opLevel].o>0)?{c:COMPS[idx],v:variant,o:OPS[opLevel].o}:null};
