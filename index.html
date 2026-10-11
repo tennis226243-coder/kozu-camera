@@ -38,9 +38,9 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   -webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5)}
 
 /* viewfinder: full bleed under the system bars */
-.vf{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:pan-y}
+.vf{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:none}
 .vf video,.vf .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.vf video.mirror{transform:scaleX(-1)}
+.vf video{transform-origin:50% 50%}
 .vf .still{display:none}
 #guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .25s}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
@@ -71,6 +71,15 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   padding:56px 0 calc(env(safe-area-inset-bottom,0px) + 14px);
   background:linear-gradient(to top,rgba(0,0,0,.72) 0%,rgba(0,0,0,.45) 55%,rgba(0,0,0,0) 100%)}
 .bottom > *{pointer-events:auto}
+.zoombar{display:flex;justify-content:center;gap:6px;width:max-content;margin:0 auto 14px;padding:4px;border-radius:22px}
+.zoombar[hidden]{display:none}
+.zb{min-width:30px;height:30px;padding:0 6px;border-radius:15px;font-size:.6875rem;font-weight:600;color:var(--ink);
+  background:rgba(0,0,0,.35);font-variant-numeric:tabular-nums;transition:transform .15s}
+.zb[aria-pressed="true"]{color:var(--accent);transform:scale(1.15);background:rgba(0,0,0,.5)}
+.zoomhud{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);z-index:6;
+  padding:6px 14px;border-radius:16px;font-size:.875rem;font-weight:600;color:var(--accent);background:rgba(0,0,0,.5);
+  opacity:0;transition:opacity .2s;pointer-events:none;font-variant-numeric:tabular-nums}
+.zoomhud.on{opacity:1}
 .tip{margin:0 auto 12px;max-width:26em;padding:0 24px;text-align:center;font-size:.8125rem;line-height:1.7;color:var(--dim);min-height:2.2em}
 .dial{position:relative}
 .dial::after{content:"";position:absolute;left:50%;bottom:-2px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--accent)}
@@ -176,7 +185,9 @@ input[type=file]{display:none}
   </button>
 </header>
 
+<div class="zoomhud" id="zoomhud" aria-live="polite"></div>
 <footer class="bottom">
+  <div class="zoombar glass" id="zoombar" hidden aria-label="撮影倍率"></div>
   <p class="tip" id="tip" aria-live="polite"></p>
   <div class="dial"><nav class="modes" id="modes" aria-label="構図を選ぶ"></nav></div>
   <div class="row">
@@ -374,38 +385,121 @@ $('opBtn').addEventListener('click',()=>{opLevel=(opLevel+1)%OPS.length;$('opLab
 $('burnBtn').addEventListener('click',e=>{burn=!burn;e.currentTarget.setAttribute('aria-pressed',burn);});
 new ResizeObserver(render).observe(vf);
 
-/* swipe on the viewfinder */
-let sx=null,sy=null;
-vf.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;});
-vf.addEventListener('pointerup',e=>{
-  if(sx===null)return;const dx=e.clientX-sx,dy=e.clientY-sy;sx=null;
-  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3)select(idx+(dx<0?1:-1));
+/* gestures on the viewfinder: one-finger swipe = composition, two-finger pinch = zoom */
+const ptrs=new Map();let sx=null,sy=null,pinch=null,pinched=false;
+vf.addEventListener('pointerdown',e=>{
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1){sx=e.clientX;sy=e.clientY;pinched=false;}
+  if(ptrs.size===2&&source==='video'){const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:zf};pinched=true;}
 });
+vf.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);
+    zf=clamp(pinch.z*d/pinch.d,1,maxZoom());queueZoom();showHud();}
+});
+function endPtr(e){
+  const had=ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;
+  if(!had||ptrs.size>0)return;
+  if(sx!==null&&!pinched&&e.type==='pointerup'){const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3)select(idx+(dx<0?1:-1));}
+  sx=null;
+}
+['pointerup','pointercancel'].forEach(t=>vf.addEventListener(t,endPtr));
 
-/* camera */
+/* camera + lenses */
+let track=null, lenses={}, lens='main', zf=1, hwZoom=false, zoomBusy=false, zoomAgain=false;
 function enterViewfinder(){$('start').style.display='none';$('shutter').disabled=false;ready=true;}
 function showErr(msg){const el=$('err');el.textContent=msg;el.hidden=false;$('start').style.display='flex';}
+async function openStream(v){
+  stream?.getTracks().forEach(t=>t.stop());
+  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{...v,width:{ideal:3840},height:{ideal:2880}}});
+  video.srcObject=stream;await video.play();track=stream.getVideoTracks()[0];
+}
+async function detectLenses(){
+  lenses={};
+  const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+  for(const d of devs){const L=d.label||'';
+    if(/front|前面|フロント/i.test(L))continue;
+    if(/ultra.?wide|超広角/i.test(L))lenses.uw??=d.deviceId;
+    else if(/tele|望遠/i.test(L))lenses.tele??=d.deviceId;
+    else if(/dual|triple|デュアル|トリプル/i.test(L))continue;
+    else if(/back|rear|背面/i.test(L))lenses.main??=d.deviceId;}
+  lenses.main??=track?.getSettings?.().deviceId;
+}
 async function startCamera(){
   if(!navigator.mediaDevices?.getUserMedia){showErr('このブラウザではカメラを使えません。「撮った写真で構図を確認」をお試しください。');return;}
   try{
-    stream?.getTracks().forEach(t=>t.stop());
-    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:1440}}});
-    video.srcObject=stream; await video.play();
-    video.classList.toggle('mirror',facing==='user');
-    video.style.display='block'; still.style.display='none'; source='video';
-    $('flipCam').hidden=false; enterViewfinder();
+    if(facing==='user'){await openStream({facingMode:'user'});lens='front';}
+    else{
+      await openStream({facingMode:{ideal:'environment'}});
+      await detectLenses();
+      if(lenses.main&&track.getSettings?.().deviceId!==lenses.main)await openStream({deviceId:{exact:lenses.main}});
+      lens='main';
+    }
+    zf=1;await applyZoom();
+    video.style.display='block';still.style.display='none';source='video';
+    $('flipCam').hidden=false;$('zoombar').hidden=false;buildZoomBar();enterViewfinder();
   }catch(err){
     const n=err&&err.name;
     showErr(n==='NotAllowedError'?'カメラの使用が許可されませんでした。設定でカメラを許可してから、もう一度お試しください。':
       n==='NotFoundError'?'カメラが見つかりませんでした。':'カメラを起動できませんでした（'+(n||'不明なエラー')+'）。');
   }
 }
+async function setLens(name,z){
+  try{
+    if(name!==lens){await openStream({deviceId:{exact:lenses[name]}});lens=name;}
+    zf=z;await applyZoom();
+  }catch(e){showHud('レンズを切り替えられませんでした');}
+  buildZoomBar();
+}
+function maxZoom(){const c=track?.getCapabilities?.().zoom;return c?Math.min(c.max,10):5;}
+async function applyZoom(){
+  const c=track?.getCapabilities?.().zoom;hwZoom=false;
+  if(c&&zf<=c.max){try{await track.applyConstraints({advanced:[{zoom:Math.max(c.min,zf)}]});hwZoom=true;}catch(e){}}
+  const dz=hwZoom?1:zf;
+  video.style.transform=`scale(${(lens==='front'?-1:1)*dz},${dz})`;
+  updateZoomUI();
+}
+function queueZoom(){
+  if(zoomBusy){zoomAgain=true;return;}
+  zoomBusy=true;applyZoom().finally(()=>{zoomBusy=false;if(zoomAgain){zoomAgain=false;queueZoom();}});
+}
+const lensK=()=>lens==='uw'?.5:1;
+const fmt=v=>(Math.round(v*10)/10).toString().replace(/^0\./,'.');
+function stops(){
+  const L=lens==='front'?'front':'main',s=[];
+  if(lens!=='front'&&lenses.uw)s.push({lens:'uw',z:1,k:.5});
+  s.push({lens:L,z:1,k:1},{lens:L,z:2,k:2});
+  if(lens!=='front'&&lenses.tele)s.push({lens:'tele',z:1,k:0});
+  return s;
+}
+function buildZoomBar(){
+  const bar=$('zoombar');bar.innerHTML='';
+  stops().forEach(st=>{const b=document.createElement('button');b.type='button';b.className='zb';
+    b.addEventListener('click',()=>{navigator.vibrate?.(6);setLens(st.lens,st.z);});
+    b._st=st;bar.appendChild(b);});
+  updateZoomUI();
+}
+function updateZoomUI(){
+  const bar=$('zoombar');if(!bar.children.length)return;
+  const cand=[...bar.children].filter(b=>b._st.lens===lens||(lens==='front'&&b._st.lens==='front'));
+  let act=null;for(const b of cand)if(b._st.z<=zf+.05)act=b;
+  [...bar.children].forEach(b=>{const st=b._st,on=b===act;b.setAttribute('aria-pressed',on);
+    if(st.lens==='tele')b.textContent=on&&zf>1.05?'望遠 '+fmt(zf)+'×':'望遠';
+    else b.textContent=on?fmt(lensK()*zf)+'×':fmt(st.k);
+    b.setAttribute('aria-label',st.lens==='tele'?'望遠レンズ':fmt(st.k)+'倍');});
+}
+let hudT=0;
+function showHud(text){const h=$('zoomhud');
+  h.textContent=text||(lens==='tele'?'望遠 ':'')+fmt(lensK()*zf)+'×';
+  h.classList.add('on');clearTimeout(hudT);hudT=setTimeout(()=>h.classList.remove('on'),700);}
+
 $('startCam').addEventListener('click',startCamera);
 $('flipCam').addEventListener('click',()=>{facing=facing==='environment'?'user':'environment';startCamera();});
 $('pickPhoto').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',e=>{
   const fl=e.target.files[0];if(!fl)return;
-  still.onload=()=>{still.style.display='block';video.style.display='none';source='still';enterViewfinder();};
+  still.onload=()=>{still.style.display='block';video.style.display='none';source='still';$('zoombar').hidden=true;enterViewfinder();};
   still.src=URL.createObjectURL(fl); e.target.value='';
 });
 
@@ -416,9 +510,10 @@ async function capture(){
   const iw=source==='video'?video.videoWidth:still.naturalWidth, ih=source==='video'?video.videoHeight:still.naturalHeight;
   if(!iw||!ih)return;
   const Dw=vf.clientWidth,Dh=vf.clientHeight,s=Math.max(Dw/iw,Dh/ih);
-  const cw=Math.round(Dw/s),ch=Math.round(Dh/s),sx0=(iw-cw)/2,sy0=(ih-ch)/2;
+  const dz=source==='video'&&!hwZoom?zf:1;
+  const cw=Math.round(Dw/s/dz),ch=Math.round(Dh/s/dz),sx0=(iw-cw)/2,sy0=(ih-ch)/2;
   const base=document.createElement('canvas');base.width=cw;base.height=ch;const ctx=base.getContext('2d');
-  ctx.save(); if(source==='video'&&facing==='user'){ctx.translate(cw,0);ctx.scale(-1,1);}
+  ctx.save(); if(source==='video'&&lens==='front'){ctx.translate(cw,0);ctx.scale(-1,1);}
   ctx.drawImage(el,sx0,sy0,cw,ch,0,0,cw,ch); ctx.restore();
   const small=scaled(base,1280), tile=squareTile(base,120);
   shot={base,small,smallData:small.getContext('2d').getImageData(0,0,small.width,small.height),tile,
