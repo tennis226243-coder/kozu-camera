@@ -48,6 +48,12 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @keyframes fl{0%{opacity:.8}100%{opacity:0}}
 
 /* big composition name, shown briefly when the guide changes */
+.focusring{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;border:1.5px solid var(--accent);border-radius:6px;
+  pointer-events:none;opacity:0;transform:scale(1.4)}
+.focusring.on{animation:fr .35s ease-out forwards}
+.focusring.ok{border-width:2px}
+.focusring.dim{opacity:.55!important}
+@keyframes fr{to{opacity:1;transform:scale(1)}}
 .bigname{position:fixed;left:0;right:0;top:38%;text-align:center;pointer-events:none;opacity:0;
   font-size:2.25rem;font-weight:300;letter-spacing:.12em;text-shadow:0 2px 18px rgba(0,0,0,.55)}
 .bigname small{display:block;font-size:.75rem;letter-spacing:.3em;margin-top:6px;color:var(--dim)}
@@ -176,6 +182,7 @@ input[type=file]{display:none}
   <img class="still" id="still" alt="選んだ写真">
   <svg id="guide" xmlns="http://www.w3.org/2000/svg"></svg>
   <div class="flash" id="flash"></div>
+  <div class="focusring" id="focusRing" aria-hidden="true"></div>
 </main>
 <div class="bigname" id="bigname" aria-hidden="true"></div>
 
@@ -404,9 +411,10 @@ new ResizeObserver(render).observe(vf);
 
 /* gestures on the viewfinder: one-finger swipe = composition, two-finger pinch = zoom */
 const ptrs=new Map();let sx=null,sy=null,pinch=null,pinched=false;
+let st0=0;
 vf.addEventListener('pointerdown',e=>{
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===1){sx=e.clientX;sy=e.clientY;pinched=false;}
+  if(ptrs.size===1){sx=e.clientX;sy=e.clientY;pinched=false;st0=performance.now();}
   if(ptrs.size===2&&source==='video'){const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),e:effZoom()};pinched=true;}
 });
 vf.addEventListener('pointermove',e=>{
@@ -418,10 +426,46 @@ function endPtr(e){
   const had=ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;
   if(!had||ptrs.size>0)return;
   if(sx!==null&&!pinched&&e.type==='pointerup'){const dx=e.clientX-sx,dy=e.clientY-sy;
-    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3)select(idx+(dx<0?1:-1));}
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3)select(idx+(dx<0?1:-1));
+    else if(Math.hypot(dx,dy)<12&&performance.now()-st0<400)tapFocus(e.clientX,e.clientY);}
   sx=null;
 }
 ['pointerup','pointercancel'].forEach(t=>vf.addEventListener(t,endPtr));
+
+/* tap to focus: uses the browser's focus controls where they exist (Chrome on Android).
+   iPhone Safari does not expose them, so there the camera keeps its own continuous autofocus. */
+let focusT=0,focusHinted=false,subject=null;
+function clearSubject(){subject=null;$('focusRing').classList.remove('on','ok','dim');}
+function focusSupported(){
+  const c=track?.getCapabilities?.()||{},s=navigator.mediaDevices.getSupportedConstraints?.()||{};
+  return !!(c.focusMode&&c.focusMode.length&&s.pointsOfInterest);
+}
+async function tapFocus(cx,cy){
+  if(source!=='video'||!track)return;
+  const ring=$('focusRing'),r=vf.getBoundingClientRect(),x=cx-r.left,y=cy-r.top;
+  ring.style.left=x+'px';ring.style.top=y+'px';
+  if(!focusSupported()){
+    /* iPhone: remember the tapped spot as the subject; it is sharpened locally after the shot */
+    subject={u:x/r.width,v:y/r.height};
+    ring.classList.remove('on','ok','dim');void ring.offsetWidth;ring.classList.add('on');
+    clearTimeout(focusT);focusT=setTimeout(()=>ring.classList.add('dim'),1400);
+    navigator.vibrate?.(8);
+    if(!focusHinted){focusHinted=true;toast('タップした場所を主役として、撮影後にくっきり仕上げます',null,null,3200);}
+    return;
+  }
+  ring.classList.remove('on','ok');void ring.offsetWidth;ring.classList.add('on');
+  /* screen point -> point in the camera frame (object-fit: cover, digital zoom, mirroring) */
+  const vw=video.videoWidth,vh=video.videoHeight,dz=hwZoom?1:zf,s=Math.max(r.width/vw,r.height/vh)*dz;
+  let u=((x-r.width/2)/s+vw/2)/vw,v=((y-r.height/2)/s+vh/2)/vh;
+  if(lens==='front')u=1-u;u=clamp(u,0,1);v=clamp(v,0,1);
+  const caps=track.getCapabilities(),mode=caps.focusMode.includes('single-shot')?'single-shot':caps.focusMode.includes('continuous')?'continuous':caps.focusMode[0];
+  const adv={focusMode:mode,pointsOfInterest:[{x:u,y:v}]};
+  if(caps.exposureMode?.includes('continuous'))adv.exposureMode='continuous';
+  try{await track.applyConstraints({advanced:[adv]});ring.classList.add('ok');navigator.vibrate?.(8);}catch(e){}
+  clearTimeout(focusT);
+  focusT=setTimeout(()=>{ring.classList.remove('on','ok');
+    if(caps.focusMode.includes('continuous'))track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});},4000);
+}
 
 /* camera + lenses */
 let track=null, lenses={}, lens='main', zf=1, hwZoom=false, zoomBusy=false, zoomAgain=false;
@@ -453,7 +497,7 @@ async function startCamera(){
       if(lenses.main&&track.getSettings?.().deviceId!==lenses.main)await openStream({deviceId:{exact:lenses.main}});
       lens='main';
     }
-    zf=1;await applyZoom();
+    zf=1;clearSubject();await applyZoom();
     video.style.display='block';still.style.display='none';source='video';
     $('flipCam').hidden=false;$('zoombar').hidden=false;buildZoomBar();enterViewfinder();
   }catch(err){
@@ -536,6 +580,41 @@ $('file').addEventListener('change',e=>{
 
 /* capture: keep the photo without guides so edits never tint the guide lines */
 let shot=null;
+/* sharpness of the center of a frame (variance of the Laplacian) */
+const probe=document.createElement('canvas');probe.width=probe.height=256;
+function sharpness(el,iw,ih,px,py){
+  const p=probe.getContext('2d',{willReadFrequently:true}),m=Math.min(iw,ih)*.3;
+  const x0=clamp((px??iw/2)-m/2,0,iw-m),y0=clamp((py??ih/2)-m/2,0,ih-m);
+  p.drawImage(el,x0,y0,m,m,0,0,256,256);
+  const d=p.getImageData(0,0,256,256).data,L=new Float32Array(65536);
+  for(let j=0;j<65536;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];
+  let s=0,s2=0,c=0;
+  for(let y=1;y<255;y++)for(let x=1;x<255;x++){const i=y*256+x,v=4*L[i]-L[i-1]-L[i+1]-L[i-256]-L[i+256];s+=v;s2+=v*v;c++;}
+  return s2/c-(s/c)*(s/c);
+}
+const nextFrame=()=>new Promise(res=>video.requestVideoFrameCallback?video.requestVideoFrameCallback(()=>res()):setTimeout(res,45));
+/* light unsharp mask on luminance, to restore crispness lost in the video stream */
+function sharpen(cv,amount){
+  const W=cv.width,H=cv.height,x=cv.getContext('2d'),img=x.getImageData(0,0,W,H),d=img.data,n=W*H;
+  const L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];
+  const B=blur(L,W,H,Math.max(1,Math.round(Math.max(W,H)/1800)));
+  for(let j=0;j<n;j++){const k=(L[j]-B[j])*amount,i=j*4;d[i]+=k;d[i+1]+=k;d[i+2]+=k;}
+  x.putImageData(img,0,0);
+}
+/* subject emphasis: stronger detail + local contrast around the tapped point, fading out smoothly.
+   Differences are clamped so edges do not get white halos. */
+function localSharpen(cv,u,v){
+  const W=cv.width,H=cv.height,x=cv.getContext('2d'),img=x.getImageData(0,0,W,H),d=img.data,n=W*H;
+  const L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];
+  const r1=Math.max(1,Math.round(Math.max(W,H)/1400)),rc=Math.max(3,Math.round(Math.max(W,H)/120));
+  const B1=blur(L,W,H,r1),B2=blur(blur(L,W,H,rc),W,H,rc);
+  const cx=u*W,cy=v*H,sg=.2*Math.min(W,H),k2=1/(2*sg*sg);
+  for(let y=0,j=0;y<H;y++){const dy=(y-cy)*(y-cy);
+    for(let xx=0;xx<W;xx++,j++){const w=Math.exp(-((xx-cx)*(xx-cx)+dy)*k2);if(w<.02)continue;
+      const k=w*(clamp((L[j]-B1[j])*1.1,-32,32)+clamp((L[j]-B2[j])*.3,-22,22)),i=j*4;
+      d[i]+=k;d[i+1]+=k;d[i+2]+=k;}}
+  x.putImageData(img,0,0);
+}
 async function capture(){
   const el=source==='video'?video:still;
   const iw=source==='video'?video.videoWidth:still.naturalWidth, ih=source==='video'?video.videoHeight:still.naturalHeight;
@@ -543,9 +622,21 @@ async function capture(){
   const Dw=vf.clientWidth,Dh=vf.clientHeight,s=Math.max(Dw/iw,Dh/ih);
   const dz=source==='video'&&!hwZoom?zf:1;
   const cw=Math.round(Dw/s/dz),ch=Math.round(Dh/s/dz),sx0=(iw-cw)/2,sy0=(ih-ch)/2;
-  const base=document.createElement('canvas');base.width=cw;base.height=ch;const ctx=base.getContext('2d');
-  ctx.save(); if(source==='video'&&lens==='front'){ctx.translate(cw,0);ctx.scale(-1,1);}
-  ctx.drawImage(el,sx0,sy0,cw,ch,0,0,cw,ch); ctx.restore();
+  const mk=()=>{const c=document.createElement('canvas');c.width=cw;c.height=ch;return c;};
+  const draw=c=>{const ctx=c.getContext('2d');ctx.save();if(source==='video'&&lens==='front'){ctx.translate(cw,0);ctx.scale(-1,1);}
+    ctx.drawImage(el,sx0,sy0,cw,ch,0,0,cw,ch);ctx.restore();};
+  let base=mk();
+  if(source==='video'){
+    /* burst of a few frames, keep the sharpest one */
+    let best=-1,spare=mk();
+    for(let f=0;f<6;f++){
+      if(f)await nextFrame();
+      const sh=subject?sharpness(video,iw,ih,lens==='front'?sx0+(1-subject.u)*cw:sx0+subject.u*cw,sy0+subject.v*ch):sharpness(video,iw,ih);
+      if(sh>best){best=sh;draw(spare);[base,spare]=[spare,base];}
+    }
+    sharpen(base,.45);
+    if(subject)localSharpen(base,subject.u,subject.v);
+  }else draw(base);
   const small=scaled(base,1280), tile=squareTile(base,120);
   shot={base,small,smallData:small.getContext('2d').getImageData(0,0,small.width,small.height),tile,
     guide:(burn&&OPS[opLevel].o>0)?{c:COMPS[idx],v:variant,o:OPS[opLevel].o}:null};
