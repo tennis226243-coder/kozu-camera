@@ -639,16 +639,21 @@ const g3=(a,W,H,r)=>blur(blur(blur(a,W,H,r),W,H,r),W,H,r);
 const rOf=sig=>Math.max(1,Math.round((Math.sqrt(4*sig*sig+1)-1)/2));
 function lumF(img){const d=img.data,n=img.width*img.height,L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];return L;}
 function focusMap(src){
+  /* dense blur estimate: compare local edge energy before/after a known re-blur (ratio -> blur size),
+     trust it where there is texture, and fill plain areas from their surroundings */
   const c=scaled(src,900),W=c.width,H=c.height,n=W*H,L=lumF(c.getContext('2d').getImageData(0,0,W,H));
   for(let j=0;j<n;j++)L[j]/=255;
-  const s0=1.414,G1=sobel(L,W,H),G2=sobel(g3(L,W,H,1),W,H),T=Math.max(.06,pctl(G1,.88));
-  const num=new Float32Array(n),den=new Float32Array(n),edge=[];
-  for(let j=0;j<n;j++){if(G1[j]<=T||G2[j]<1e-4)continue;
-    const R=G1[j]/G2[j],s=R>1.02?Math.min(5,s0/Math.sqrt(R*R-1)):5;num[j]=s;den[j]=1;edge.push(s);}
-  edge.sort((a,b)=>a-b);const med=edge.length?edge[edge.length>>1]:1.5;
-  const rs=Math.max(4,Math.round(Math.max(W,H)/28)),N=g3(num,W,H,rs),D=g3(den,W,H,rs),M=new Float32Array(n);
-  for(let j=0;j<n;j++){const w=clamp(D[j]*40,0,1);M[j]=w*(D[j]>1e-6?N[j]/D[j]:med)+(1-w)*med;}
-  return {W,H,M:g3(M,W,H,Math.max(2,rs>>1)),long:Math.max(W,H)};
+  const s0=1.414,G1=sobel(L,W,H),G2=sobel(g3(L,W,H,1),W,H),long=Math.max(W,H);
+  const rw=Math.max(3,Math.round(long/90)),e1=new Float32Array(n),e2=new Float32Array(n);
+  for(let j=0;j<n;j++){e1[j]=G1[j]*G1[j];e2[j]=G2[j]*G2[j];}
+  const A=g3(e1,W,H,rw),B=g3(e2,W,H,rw),T=Math.max(1e-4,pctl(A,.35));
+  const sg=new Float32Array(n),wt=new Float32Array(n),sw=new Float32Array(n);
+  for(let j=0;j<n;j++){const R=Math.sqrt(A[j]/Math.max(B[j],1e-9));
+    sg[j]=R>1.02?Math.min(6,s0/Math.sqrt(R*R-1)):6;wt[j]=clamp((A[j]-T)/T,0,1);sw[j]=sg[j]*wt[j];}
+  const rs=Math.max(6,Math.round(long/30)),N=g3(sw,W,H,rs),D=g3(wt,W,H,rs),M=new Float32Array(n);
+  let med=0,mc=0;for(let j=0;j<n;j+=5)if(wt[j]>.5){med+=sg[j];mc++;}med=mc?med/mc:1.5;
+  for(let j=0;j<n;j++){const fill=D[j]>1e-4?N[j]/D[j]:med;M[j]=sg[j]*wt[j]+fill*(1-wt[j]);}
+  return {W,H,M:g3(M,W,H,Math.max(2,rw>>1)),long};
 }
 function mapAt(fm,u,v){return fm.M[clamp(Math.round(v*(fm.H-1)),0,fm.H-1)*fm.W+clamp(Math.round(u*(fm.W-1)),0,fm.W-1)];}
 function rlLum(L,W,H,r,it){let e=Float32Array.from(L);const n=L.length;
@@ -692,19 +697,26 @@ function mapCanvas(fm){
       that still deconvolves cleanly (no ringing in flat areas).
    2) Deconvolve the whole image with that size and apply it where the focus map says the blur is
       similar or larger (same distance as the subject and beyond). Already-sharp areas stay untouched. */
-function subjectSigma(base,u,v){
+function subjectSigma(base,u,v,fm){
   const W=base.width,H=base.height,half=Math.round(.12*Math.min(W,H));
   const cx=Math.round(u*W),cy=Math.round(v*H),x0=clamp(cx-half,0,W-2*half),y0=clamp(cy-half,0,H-2*half),w=Math.min(W,2*half),h=Math.min(H,2*half);
-  const L=lumF(base.getContext('2d').getImageData(x0,y0,w,h)),G=sobel(L,w,h),flatT=pctl(G,.45);
+  const L=lumF(base.getContext('2d').getImageData(x0,y0,w,h)),G=sobel(L,w,h);
+  /* judge only the pixels that are about as blurred as the tapped point (ignore sharp things nearby) */
+  const mt=mapAt(fm,u,v),mask=new Uint8Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)mask[y*w+x]=mapAt(fm,(x0+x)/(W-1),(y0+y)/(H-1))>=.75*mt?1:0;
+  const gm=[];for(let j=0;j<w*h;j+=3)if(mask[j])gm.push(G[j]);gm.sort((a,b)=>a-b);
+  const flatT=gm.length?gm[Math.floor(gm.length*.45)]:pctl(G,.45);
+  /* the focus map gives a first guess; deconvolution tests refine it */
+  const guess=mt*Math.max(W,H)/fm.long;
   let best=0;
-  for(const s of [1.2,1.7,2.4,3.3,4.5,6,8]){
+  for(const s of [1.2,1.7,2.4,3.3,4.5,6,8,10]){
     const E=rlLum(L,w,h,rOf(s),8);let dev=0,c=0,gain=0,gc=0;
-    for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){const j=y*w+x;
+    for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){const j=y*w+x;if(!mask[j])continue;
       if(G[j]<=flatT){dev+=Math.abs(E[j]-L[j]);c++;}else{gain+=Math.abs(E[j]-L[j]);gc++;}}
     dev/=Math.max(1,c);gain/=Math.max(1,gc);
-    if(dev<3.2&&gain>dev*1.6)best=s;else break;
+    if(dev<3.6&&gain>dev*1.5)best=s;else break;
   }
-  return best;
+  return Math.max(best,Math.min(10,guess*.85));
 }
 function refocusDelta(img,sigBase,baseLong,fm,it=12){
   const W=img.width,H=img.height,L=lumF(img),k=Math.max(W,H)/baseLong,sig=Math.max(1,sigBase*k);
@@ -757,7 +769,7 @@ async function capture(){
   showMap=false;$('mapBtn').setAttribute('aria-pressed','false');
   shot.fm=focusMap(small); shot.fmCanvas=mapCanvas(shot.fm); shot.dl=null;
   const su=subject?subject.u:.5,sv=subject?subject.v:.5;
-  shot.sig=subjectSigma(base,su,sv);shot.baseLong=Math.max(base.width,base.height);
+  shot.sig=subjectSigma(base,su,sv,shot.fm);shot.baseLong=Math.max(base.width,base.height);
   shot.focusNote=focusText(shot.fm);
   if(shot.sig>=1.7){shot.auto.dfx=shot.sig>=3.3?90:75;
     shot.note+=` 主役の位置が約${Math.round(shot.sig*10)/10}ピクセル分ボケていたので、同じ距離のピントを補正しました。`;}
