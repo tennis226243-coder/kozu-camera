@@ -42,6 +42,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .vf video,.vf .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .vf video{transform-origin:50% 50%}
 .vf .still{display:none}
+#peak{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;mix-blend-mode:normal;opacity:.9}
 #guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .25s}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 .flash.on{animation:fl .3s ease-out}
@@ -185,6 +186,7 @@ input[type=file]{display:none}
 <main class="vf" id="vf">
   <video id="video" playsinline muted autoplay></video>
   <img class="still" id="still" alt="選んだ写真">
+  <canvas id="peak" aria-hidden="true"></canvas>
   <svg id="guide" xmlns="http://www.w3.org/2000/svg"></svg>
   <div class="flash" id="flash"></div>
   <div class="focusring" id="focusRing" aria-hidden="true"></div>
@@ -197,6 +199,9 @@ input[type=file]{display:none}
     <span id="opLabel">ガイド 濃い</span>
   </button>
   <span class="spacer"></span>
+  <button class="round glass" id="peakBtn" aria-pressed="false" aria-label="ピント表示">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="7.5" stroke-dasharray="2 2.6"/></svg>
+  </button>
   <button class="round glass" id="quickBtn" aria-pressed="false" aria-label="すぐ保存モード">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10M7.5 9.5 12 14l4.5-4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
   </button>
@@ -456,9 +461,8 @@ async function tapFocus(cx,cy){
     subject={u:x/r.width,v:y/r.height};
     ring.classList.remove('on','ok','dim','good','hunt');void ring.offsetWidth;ring.classList.add('on');
     clearTimeout(focusT);navigator.vibrate?.(8);
-    if(source==='still'){focusT=setTimeout(()=>ring.classList.add('dim'),1400);return;}
-    if(!focusHinted){focusHinted=true;toast('ピントを探し直して、主役が一番くっきりした瞬間を撮影します',null,null,3000);}
-    focusHunt();
+    focusT=setTimeout(()=>ring.classList.add('dim'),1400);
+    if(!focusHinted&&source==='video'){focusHinted=true;toast('タップした場所を主役として、撮影後にくっきり仕上げます',null,null,3000);}
     return;
   }
   ring.classList.remove('on','ok');void ring.offsetWidth;ring.classList.add('on');
@@ -474,6 +478,39 @@ async function tapFocus(cx,cy){
   focusT=setTimeout(()=>{ring.classList.remove('on','ok');
     if(caps.focusMode.includes('continuous'))track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});},4000);
 }
+
+/* live focus display (focus peaking): sharp edges green, slightly soft yellow, blurred red.
+   Computed on a reduced copy of the visible frame several times per second. */
+let peakOn=false;try{peakOn=localStorage.getItem('kozu-peak')==='1';}catch(e){}
+const pk=$('peak'),pkWork=document.createElement('canvas'),pkOut=document.createElement('canvas');
+let pkLast=0,pkLoop=false;
+function peakFrame(){
+  const g=geom();if(!g)return;
+  const w=Math.min(480,Math.round(g.cw)),h=Math.max(1,Math.round(w*g.ch/g.cw));
+  if(pkWork.width!==w||pkWork.height!==h){pkWork.width=pkOut.width=w;pkWork.height=pkOut.height=h;}
+  const x=pkWork.getContext('2d',{willReadFrequently:true});x.save();
+  if(lens==='front'){x.translate(w,0);x.scale(-1,1);}
+  x.drawImage(video,g.sx0,g.sy0,g.cw,g.ch,0,0,w,h);x.restore();
+  const n=w*h,L=lumF(x.getImageData(0,0,w,h));
+  const G1=sobel(L,w,h),G2=sobel(blur(L,w,h,1),w,h),T=Math.max(28,pctl(G1,.82));
+  const o=x.createImageData(w,h),d=o.data;
+  for(let j=0;j<n;j++){if(G1[j]<=T)continue;const R=G1[j]/Math.max(1e-3,G2[j]),i=j*4;
+    if(R>1.5){d[i]=74;d[i+1]=222;d[i+2]=128;}else if(R>1.25){d[i]=255;d[i+1]=213;d[i+2]=74;}else{d[i]=255;d[i+1]=90;d[i+2]=90;}
+    d[i+3]=230;}
+  pkOut.getContext('2d').putImageData(o,0,0);
+  if(pk.width!==vf.clientWidth||pk.height!==vf.clientHeight){pk.width=vf.clientWidth;pk.height=vf.clientHeight;}
+  const c=pk.getContext('2d');c.clearRect(0,0,pk.width,pk.height);c.imageSmoothingEnabled=true;c.drawImage(pkOut,0,0,pk.width,pk.height);
+}
+function peakTick(){
+  if(!peakOn||source!=='video'||$('sheet').classList.contains('open')){pkLoop=false;pk.getContext('2d').clearRect(0,0,pk.width,pk.height);return;}
+  const now=performance.now();if(now-pkLast>110){pkLast=now;try{peakFrame();}catch(e){}}
+  video.requestVideoFrameCallback?video.requestVideoFrameCallback(peakTick):requestAnimationFrame(peakTick);
+}
+function startPeak(){if(peakOn&&!pkLoop&&source==='video'){pkLoop=true;peakTick();}}
+$('peakBtn').setAttribute('aria-pressed',peakOn);
+$('peakBtn').addEventListener('click',e=>{peakOn=!peakOn;e.currentTarget.setAttribute('aria-pressed',peakOn);
+  try{localStorage.setItem('kozu-peak',peakOn?'1':'0');}catch(err){}
+  showHud(peakOn?'ピント表示：オン（緑＝合っている／赤＝ボケ）':'ピント表示：オフ');startPeak();});
 
 /* camera + lenses */
 let track=null, lenses={}, lens='main', zf=1, hwZoom=false, zoomBusy=false, zoomAgain=false;
@@ -507,7 +544,7 @@ async function startCamera(){
     }
     zf=1;clearSubject();await applyZoom();
     video.style.display='block';still.style.display='none';source='video';
-    $('flipCam').hidden=false;$('zoombar').hidden=false;buildZoomBar();enterViewfinder();
+    $('flipCam').hidden=false;$('zoombar').hidden=false;buildZoomBar();enterViewfinder();startPeak();
   }catch(err){
     const n=err&&err.name;
     showErr(n==='NotAllowedError'?'カメラの使用が許可されませんでした。設定でカメラを許可してから、もう一度お試しください。':
@@ -1083,7 +1120,7 @@ $('shutter').addEventListener('click',()=>{
   navigator.vibrate?.(12); capture();
 });
 $('thumb').addEventListener('click',()=>{if(shot)openSheet();});
-$('retake').addEventListener('click',()=>$('sheet').classList.remove('open'));
+$('retake').addEventListener('click',()=>{$('sheet').classList.remove('open');startPeak();});
 
 /* full-resolution render for saving */
 async function finalBlob(){
