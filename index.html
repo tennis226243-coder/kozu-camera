@@ -639,10 +639,40 @@ function sobel(a,W,H){
   return m;
 }
 function pctl(a,q){const step=Math.max(1,Math.floor(a.length/20000)),s=[];for(let i=0;i<a.length;i+=step)s.push(a[i]);s.sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor(s.length*q))];}
+/* Kuwahara filter: edge-preserving smoothing that turns photo texture into flat painted areas.
+   Summed-area tables keep it O(n) whatever the radius. chans: Float32Arrays (0..255); returns smoothed copies */
+function kuwahara(chans,W,H,r){
+  r=Math.max(1,Math.round(r));
+  const W1=W+1,N=W1*(H+1),n=W*H;
+  const Y=new Float32Array(n);
+  if(chans.length===3)for(let j=0;j<n;j++)Y[j]=.299*chans[0][j]+.587*chans[1][j]+.114*chans[2][j];else Y.set(chans[0]);
+  const sat=src=>{const S=new Float64Array(N);for(let y=0;y<H;y++){let row=0;for(let x=0;x<W;x++){row+=src(y*W+x);S[(y+1)*W1+x+1]=S[y*W1+x+1]+row;}}return S;};
+  const SY=sat(j=>Y[j]),SY2=sat(j=>Y[j]*Y[j]),SC=chans.map(c=>sat(j=>c[j]));
+  const box=(S,x0,y0,x1,y1)=>S[(y1+1)*W1+x1+1]-S[y0*W1+x1+1]-S[(y1+1)*W1+x0]+S[y0*W1+x0];
+  const out=chans.map(()=>new Float32Array(n));
+  for(let y=0;y<H;y++){
+    const ya=Math.max(0,y-r),yb=Math.min(H-1,y+r);
+    for(let x=0;x<W;x++){
+      const xa=Math.max(0,x-r),xb=Math.min(W-1,x+r);
+      let best=Infinity,bx0=0,by0=0,bx1=0,by1=0;
+      for(let q=0;q<4;q++){
+        const x0=q&1?x:xa,x1=q&1?xb:x,y0=q&2?y:ya,y1=q&2?yb:y;
+        const cnt=(x1-x0+1)*(y1-y0+1),m=box(SY,x0,y0,x1,y1)/cnt,v=box(SY2,x0,y0,x1,y1)/cnt-m*m;
+        if(v<best){best=v;bx0=x0;by0=y0;bx1=x1;by1=y1;}
+      }
+      const cnt=(bx1-bx0+1)*(by1-by0+1),j=y*W+x;
+      for(let c=0;c<chans.length;c++)out[c][j]=box(SC[c],bx0,by0,bx1,by1)/cnt;
+    }
+  }
+  return out;
+}
+const chanOf=(d,n,c)=>{const a=new Float32Array(n);for(let j=0;j<n;j++)a[j]=d[j*4+c];return a;};
 function stylize(img,style){
   const W=img.width,H=img.height,n=W*H,d=img.data,sc=Math.max(W,H)/1200,o=new ImageData(W,H),od=o.data;
   if(style==='manga'){
-    const L=blur(blur(grayOf(d,n),W,H,.8*sc),W,H,.8*sc),E=sobel(L,W,H);
+    const G0=grayOf(d,n);for(let j=0;j<n;j++)G0[j]*=255;
+    const L=kuwahara([G0],W,H,2.5*sc)[0];for(let j=0;j<n;j++)L[j]/=255;
+    const E=sobel(blur(L,W,H,.8*sc),W,H);
     const T=Math.max(.12,pctl(E,.91)),lo=pctl(L,.05),hi=pctl(L,.95),span=Math.max(.05,hi-lo);
     const cell=Math.max(3,6.5*sc),k=Math.SQRT1_2;
     for(let y=0,j=0;y<H;y++)for(let x=0;x<W;x++,j++){
@@ -664,7 +694,7 @@ function stylize(img,style){
   if(style==='comic'){
     /* American-comic look: rich graded color, ink contours (XDoG), spot blacks, hatching and light halftone */
     const rr=Math.max(1,1.2*sc);
-    const ch=[0,1,2].map(cn=>{const a=new Float32Array(n);for(let j=0;j<n;j++)a[j]=d[j*4+cn];return blur(blur(a,W,H,rr),W,H,rr);});
+    const ch=kuwahara([0,1,2].map(c=>chanOf(d,n,c)),W,H,Math.max(2,2.5*sc));void rr;
     const G=new Float32Array(n);for(let j=0;j<n;j++)G[j]=(.299*ch[0][j]+.587*ch[1][j]+.114*ch[2][j])/255;
     const r1=Math.max(1,1.1*sc),r2=Math.max(2,2.2*sc);
     const g1=blur(G,W,H,r1),g2=blur(blur(G,W,H,r2),W,H,r2),E=sobel(G,W,H);
@@ -685,24 +715,22 @@ function stylize(img,style){
       if(g1[j]-g2[j]<-.024||E[j]>T||Ln<.07)ink=true;
       else if(Ln<.22){const w=(.22-Ln)/.15;ink=((x-y)%per+per)%per<per*(.12+.3*w);}
       else if(Ln<.62){const u=(x+y)*k/cell,v=(x-y)*k/cell,fu=u-Math.floor(u)-.5,fv=v-Math.floor(v)-.5;
-        if(Math.sqrt(fu*fu+fv*fv)<.12+.18*(.62-Ln)/.32)shade=.8;}
+        if(Math.sqrt(fu*fu+fv*fv)<.1+.14*(.62-Ln)/.32)shade=.88;}
       const i=j*4;
       if(ink){od[i]=18;od[i+1]=16;od[i+2]=20;}else{od[i]=r*shade;od[i+1]=g*shade;od[i+2]=b*shade;}
       od[i+3]=255;}
     return o;
   }
-  /* illustration and pop share: smoothed color + flat tones + ink lines */
-  const pop=style==='pop',rr=(pop?1.4:1.8)*sc;
-  const ch=[0,1,2].map(cn=>{const a=new Float32Array(n);for(let j=0;j<n;j++)a[j]=d[j*4+cn];return blur(blur(a,W,H,rr),W,H,rr);});
+  /* illustration: painted flat areas (Kuwahara x2) + soft tone steps + thin colored ink lines (XDoG) */
+  const ch=kuwahara(kuwahara([0,1,2].map(c=>chanOf(d,n,c)),W,H,3*sc),W,H,2*sc);
   const G=new Float32Array(n);for(let j=0;j<n;j++)G[j]=(.299*ch[0][j]+.587*ch[1][j]+.114*ch[2][j])/255;
-  const E=sobel(G,W,H),T=Math.max(.12,pctl(E,pop?.88:.92));
-  const lv=pop?3:5,satK=pop?1.7:1.3;
+  const r1=Math.max(1,.9*sc),r2=Math.max(2,1.8*sc),g1=blur(G,W,H,r1),g2=blur(blur(G,W,H,r2),W,H,r2);
   for(let j=0;j<n;j++){
     let r=ch[0][j],g=ch[1][j],b=ch[2][j];const Y=.299*r+.587*g+.114*b;
-    r=Y+(r-Y)*satK;g=Y+(g-Y)*satK;b=Y+(b-Y)*satK;
-    if(pop){r=Math.round(clamp(r/255,0,1)*(lv-1))/(lv-1)*255;g=Math.round(clamp(g/255,0,1)*(lv-1))/(lv-1)*255;b=Math.round(clamp(b/255,0,1)*(lv-1))/(lv-1)*255;}
-    else{const V=Math.max(r,g,b,1),q=Math.max(.12,Math.round(V/255*lv)/lv)*255/V*1.04;r*=q;g*=q;b*=q;}
-    if(E[j]>T){const m=pop?0:.28;r*=m;g*=m;b*=m;}
+    r=Y+(r-Y)*1.3;g=Y+(g-Y)*1.3;b=Y+(b-Y)*1.3;
+    const V=Math.max(r,g,b,1),q=Math.max(.14,Math.round(V/255*7)/7)*255/V,k=(.45+.55*q)*1.04;r*=k;g*=k;b*=k;
+    const D=g1[j]-g2[j],line=clamp((-D-.012)/.02,0,1);
+    if(line>0){const m=1-.72*line;r*=m;g*=m;b*=m;}
     const i=j*4;od[i]=r;od[i+1]=g;od[i+2]=b;od[i+3]=255;}
   return o;
 }
@@ -729,7 +757,7 @@ const PRESETS=[
   {k:'hardmono',n:'ハード白黒',d:'強いコントラストと粒子で、力強いモノクロ写真に。',f:a=>P(a,{con:40,sat:-100,tmp0:1,vig:30,grain:20})},
   {k:'sepia',n:'セピア',d:'茶色がかった、古い写真のようなセピア調に。',f:a=>P(a,{con:5,sat:-100,tmp0:1,fade:8,sp:[30,.5,40,.4]})},
   {k:'manga',n:'漫画風',d:'輪郭線・ベタ・スクリーントーンで、白黒の漫画のひとコマのように。',f:a=>P(a,{con:10,style:'manga'})},
-  {k:'illust',n:'イラスト風',d:'色を平らにまとめて輪郭線を描き、アニメの背景のようなイラスト調に。',f:a=>P(a,{sat:10,style:'illust'})},
+  {k:'illust',n:'イラスト風',d:'写真の細かいザラつきを絵の具で塗ったような面にまとめ、細い線を描き込んでアニメの背景のようなイラスト調に。',f:a=>P(a,{sat:10,style:'illust'})},
   {k:'sketch',n:'スケッチ風',d:'鉛筆で描いたようなモノクロのスケッチに。',f:a=>P(a,{style:'sketch'})},
   {k:'comic',n:'アメコミ風',d:'インクの輪郭線・黒ベタ・斜線の影・網点に、オレンジと青緑の鮮やかな色で、アメコミの一コマのように。',f:a=>P(a,{style:'comic'})}
 ];
@@ -783,7 +811,7 @@ $('retake').addEventListener('click',()=>$('sheet').classList.remove('open'));
 
 /* full-resolution render for saving */
 async function finalBlob(){
-  const b=params.style&&Math.max(shot.base.width,shot.base.height)>2400?scaled(shot.base,2400):shot.base;
+  const b=params.style&&Math.max(shot.base.width,shot.base.height)>1600?scaled(shot.base,1600):shot.base;
   const out=document.createElement('canvas');out.width=b.width;out.height=b.height;
   const ctx=out.getContext('2d');
   ctx.putImageData(processData(b.getContext('2d').getImageData(0,0,b.width,b.height),params),0,0);
