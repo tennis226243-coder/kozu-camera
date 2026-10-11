@@ -661,6 +661,36 @@ function stylize(img,style){
       od[i]=247*v;od[i+1]=244*v;od[i+2]=236*v;od[i+3]=255;}
     return o;
   }
+  if(style==='comic'){
+    /* American-comic look: rich graded color, ink contours (XDoG), spot blacks, hatching and light halftone */
+    const rr=Math.max(1,1.2*sc);
+    const ch=[0,1,2].map(cn=>{const a=new Float32Array(n);for(let j=0;j<n;j++)a[j]=d[j*4+cn];return blur(blur(a,W,H,rr),W,H,rr);});
+    const G=new Float32Array(n);for(let j=0;j<n;j++)G[j]=(.299*ch[0][j]+.587*ch[1][j]+.114*ch[2][j])/255;
+    const r1=Math.max(1,1.1*sc),r2=Math.max(2,2.2*sc);
+    const g1=blur(G,W,H,r1),g2=blur(blur(G,W,H,r2),W,H,r2),E=sobel(G,W,H);
+    const lo=pctl(G,.03),hi=pctl(G,.97),span=Math.max(.05,hi-lo),T=Math.max(.18,pctl(E,.955));
+    const so=hueRGB(195).map(v=>v*55),ho=hueRGB(28).map(v=>v*60);
+    const per=Math.max(3,5*sc),cell=Math.max(3,5*sc),k=Math.SQRT1_2;
+    for(let y=0,j=0;y<H;y++)for(let x=0;x<W;x++,j++){
+      let r=ch[0][j],g=ch[1][j],b=ch[2][j];
+      const Ln=clamp((G[j]-lo)/span,0,1);
+      /* saturation, S-curve and teal/orange grade */
+      const Y=.299*r+.587*g+.114*b;r=Y+(r-Y)*1.35;g=Y+(g-Y)*1.35;b=Y+(b-Y)*1.35;
+      const sC=Ln*Ln*(3-2*Ln),m=(.35+.75*sC)/Math.max(.02,Ln);
+      r*=m;g*=m;b*=m;
+      const ws=(1-Ln)*(1-Ln),wh=Ln*Ln;r+=so[0]*ws+ho[0]*wh;g+=so[1]*ws+ho[1]*wh;b+=so[2]*ws+ho[2]*wh;
+      /* flatten into a few tones per hue */
+      const V=Math.max(r,g,b,1),q=Math.max(.1,Math.round(V/255*6)/6)*255/V;r*=q;g*=q;b*=q;
+      let ink=false,shade=1;
+      if(g1[j]-g2[j]<-.024||E[j]>T||Ln<.07)ink=true;
+      else if(Ln<.22){const w=(.22-Ln)/.15;ink=((x-y)%per+per)%per<per*(.12+.3*w);}
+      else if(Ln<.62){const u=(x+y)*k/cell,v=(x-y)*k/cell,fu=u-Math.floor(u)-.5,fv=v-Math.floor(v)-.5;
+        if(Math.sqrt(fu*fu+fv*fv)<.12+.18*(.62-Ln)/.32)shade=.8;}
+      const i=j*4;
+      if(ink){od[i]=18;od[i+1]=16;od[i+2]=20;}else{od[i]=r*shade;od[i+1]=g*shade;od[i+2]=b*shade;}
+      od[i+3]=255;}
+    return o;
+  }
   /* illustration and pop share: smoothed color + flat tones + ink lines */
   const pop=style==='pop',rr=(pop?1.4:1.8)*sc;
   const ch=[0,1,2].map(cn=>{const a=new Float32Array(n);for(let j=0;j<n;j++)a[j]=d[j*4+cn];return blur(blur(a,W,H,rr),W,H,rr);});
@@ -701,7 +731,7 @@ const PRESETS=[
   {k:'manga',n:'漫画風',d:'輪郭線・ベタ・スクリーントーンで、白黒の漫画のひとコマのように。',f:a=>P(a,{con:10,style:'manga'})},
   {k:'illust',n:'イラスト風',d:'色を平らにまとめて輪郭線を描き、アニメの背景のようなイラスト調に。',f:a=>P(a,{sat:10,style:'illust'})},
   {k:'sketch',n:'スケッチ風',d:'鉛筆で描いたようなモノクロのスケッチに。',f:a=>P(a,{style:'sketch'})},
-  {k:'pop',n:'ポップアート',d:'色数をしぼった強い色と太い線で、アメコミのようなポップな絵に。',f:a=>P(a,{con:10,style:'pop'})}
+  {k:'comic',n:'アメコミ風',d:'インクの輪郭線・黒ベタ・斜線の影・網点に、オレンジと青緑の鮮やかな色で、アメコミの一コマのように。',f:a=>P(a,{style:'comic'})}
 ];
 let params=ZERO(), tool='exp', rafId=0;
 const fix=p=>{const q={...ZERO(),...p};delete q.tmp0;for(const k of NUM)q[k]=clamp(Math.round(q[k]),k==='grain'||k==='vig'?0:-100,100);return q;};
