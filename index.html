@@ -42,7 +42,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .vf video,.vf .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .vf video{transform-origin:50% 50%}
 .vf .still{display:none}
-#peak{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.9}
+#peak{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #guide{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .25s}
 .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 .flash.on{animation:fl .3s ease-out}
@@ -488,29 +488,25 @@ const pk=$('peak'),pkWork=document.createElement('canvas'),pkOut=document.create
 let pkLast=0,pkLoop=false;
 function peakFrame(){
   const g=geom();if(!g)return;
-  const w=Math.min(peakMode===1?360:480,Math.round(g.cw)),h=Math.max(1,Math.round(w*g.ch/g.cw));
+  const lim=peakMode===1?Math.round(450*g.cw/Math.max(g.cw,g.ch)):480,w=Math.min(lim,Math.round(g.cw)),h=Math.max(1,Math.round(w*g.ch/g.cw));
   if(pkWork.width!==w||pkWork.height!==h){pkWork.width=pkOut.width=w;pkWork.height=pkOut.height=h;}
   const x=pkWork.getContext('2d',{willReadFrequently:true});x.save();
   if(lens==='front'){x.translate(w,0);x.scale(-1,1);}
   x.drawImage(video,g.sx0,g.sy0,g.cw,g.ch,0,0,w,h);x.restore();
+  if(peakMode===1){
+    /* same focus map as the edit screen, computed on a reduced frame and smoothed over time */
+    const fm=focusMap(pkWork);
+    if(pkPrev&&pkPrev.length===fm.M.length)for(let j=0;j<fm.M.length;j++)fm.M[j]=pkPrev[j]*.5+fm.M[j]*.5;
+    pkPrev=fm.M;
+    const mc=mapCanvas(fm,.7*900/fm.long);  /* calibrated to match the edit-screen map */
+    if(pk.width!==vf.clientWidth||pk.height!==vf.clientHeight){pk.width=vf.clientWidth;pk.height=vf.clientHeight;}
+    const c=pk.getContext('2d');c.clearRect(0,0,pk.width,pk.height);c.imageSmoothingEnabled=true;c.drawImage(mc,0,0,pk.width,pk.height);
+    return;
+  }
   const n=w*h,L=lumF(x.getImageData(0,0,w,h));
   const G1=sobel(L,w,h),G2=sobel(blur(L,w,h,1),w,h);
   const o=x.createImageData(w,h),d=o.data;
-  if(peakMode===1){
-    /* area map: local edge-energy ratio before/after a known blur, filled into plain areas */
-    const e1=new Float32Array(n),e2=new Float32Array(n);for(let j=0;j<n;j++){e1[j]=G1[j]*G1[j];e2[j]=G2[j]*G2[j];}
-    const A=blur(blur(e1,w,h,4),w,h,4),B=blur(blur(e2,w,h,4),w,h,4),T=Math.max(120,pctl(A,.2));
-    const sv=new Float32Array(n),wt=new Float32Array(n),sw=new Float32Array(n);
-    for(let j=0;j<n;j++){const R=Math.sqrt(A[j]/Math.max(B[j],1e-6));sv[j]=clamp((R-1.1)/.4,0,1);wt[j]=clamp((A[j]-T)/T,0,1);sw[j]=sv[j]*wt[j];}
-    const rf=Math.round(w/14),N=blur(blur(sw,w,h,rf),w,h,rf),D=blur(blur(wt,w,h,rf),w,h,rf);
-    if(!pkPrev||pkPrev.length!==n)pkPrev=null;
-    const cur=new Float32Array(n);
-    for(let j=0;j<n;j++){const fill=D[j]>1e-3?N[j]/D[j]:0;let v=sv[j]*wt[j]+fill*(1-wt[j]);
-      if(pkPrev)v=pkPrev[j]*.55+v*.45;cur[j]=v;const i=j*4;
-      const a=D[j]+wt[j]>.02?1:0;  /* nothing to judge (completely plain) -> leave clear */
-      d[i]=v>.5?Math.round(255*(1-v)*2):255;d[i+1]=v>.5?220:Math.round(90+260*v);d[i+2]=80;d[i+3]=a*110;}
-    pkPrev=cur;
-  }else{
+  {
   const T=Math.max(28,pctl(G1,.82));
   for(let j=0;j<n;j++){if(G1[j]<=T)continue;const R=G1[j]/Math.max(1e-3,G2[j]),i=j*4;
     if(R>1.5){d[i]=74;d[i+1]=222;d[i+2]=128;}else if(R>1.25){d[i]=255;d[i+1]=213;d[i+2]=74;}else{d[i]=255;d[i+1]=90;d[i+2]=90;}
@@ -522,7 +518,7 @@ function peakFrame(){
 }
 function peakTick(){
   if(!peakMode||source!=='video'||$('sheet').classList.contains('open')){pkLoop=false;pk.getContext('2d').clearRect(0,0,pk.width,pk.height);return;}
-  const now=performance.now();if(now-pkLast>110){pkLast=now;try{peakFrame();}catch(e){}}
+  const now=performance.now();if(now-pkLast>(peakMode===1?220:110)){pkLast=now;try{peakFrame();}catch(e){}}
   video.requestVideoFrameCallback?video.requestVideoFrameCallback(peakTick):requestAnimationFrame(peakTick);
 }
 function startPeak(){if(peakMode&&!pkLoop&&source==='video'){pkLoop=true;peakTick();}}
@@ -747,9 +743,9 @@ function focusText(fm){
   const where=bi===1&&bj===1?'中央':rows[bi]+(bj===1?'':'・'+cols[bj]);
   return 'ピントが一番合っているのは画面の「'+where+'」付近です。';
 }
-function mapCanvas(fm){
+function mapCanvas(fm,k=1){
   const c=document.createElement('canvas');c.width=fm.W;c.height=fm.H;const x=c.getContext('2d'),img=x.createImageData(fm.W,fm.H),d=img.data;
-  for(let j=0;j<fm.M.length;j++){const t=clamp((fm.M[j]-.7)/1.8,0,1),i=j*4;
+  for(let j=0;j<fm.M.length;j++){const t=clamp((fm.M[j]*k-.7)/1.8,0,1),i=j*4;
     d[i]=Math.round(60+195*Math.min(1,t*2));d[i+1]=Math.round(210-170*Math.max(0,t*2-1));d[i+2]=70;d[i+3]=120;}
   x.putImageData(img,0,0);return c;
 }
