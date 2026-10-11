@@ -136,6 +136,8 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .sbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px}
 .sbar .close{height:36px;padding:0 6px;font-size:.9375rem;color:var(--ink)}
 .acts2{display:flex;gap:8px}
+.mapbtn{height:32px;border-radius:16px;padding:0 12px;font-size:.75rem}
+.mapbtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .sbar .share{height:36px;border-radius:18px;padding:0 16px;font-size:.875rem}
 .sbar .share:disabled{opacity:.5}
 .sbar .save{height:36px;border-radius:18px;padding:0 18px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:.875rem}
@@ -237,6 +239,7 @@ input[type=file]{display:none}
 <div class="sheet" id="sheet" role="dialog" aria-label="写真の補正">
   <div class="sbar">
     <button class="close" id="retake">閉じる</button>
+    <button class="mapbtn glass" id="mapBtn" aria-pressed="false">ピントマップ</button>
     <span class="acts2"><button class="share glass" id="shareBtn">共有</button><button class="save" id="save">保存</button></span>
   </div>
   <div class="imgwrap" id="imgwrap"><canvas id="pv" aria-label="補正後の写真"></canvas></div>
@@ -629,6 +632,61 @@ function deblurSubject(cv,u,v){
       const k=clamp(est[j]-L[j],-45,45)*wt,i=j*4;d[i]+=k;d[i+1]+=k;d[i+2]+=k;}}
   ctx.putImageData(img,x0,y0);
 }
+/* ---------- focus map + spatially varying deblur ----------
+   1) Estimate how blurred each area is (re-blur gradient ratio at edges, then spread to a smooth map).
+   2) Deconvolve (Richardson-Lucy) with a few preset blur sizes and pick, per pixel, the one that matches the map. */
+const g3=(a,W,H,r)=>blur(blur(blur(a,W,H,r),W,H,r),W,H,r);
+const rOf=sig=>Math.max(1,Math.round((Math.sqrt(4*sig*sig+1)-1)/2));
+function lumF(img){const d=img.data,n=img.width*img.height,L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];return L;}
+function focusMap(src){
+  const c=scaled(src,900),W=c.width,H=c.height,n=W*H,L=lumF(c.getContext('2d').getImageData(0,0,W,H));
+  for(let j=0;j<n;j++)L[j]/=255;
+  const s0=1.414,G1=sobel(L,W,H),G2=sobel(g3(L,W,H,1),W,H),T=Math.max(.06,pctl(G1,.88));
+  const num=new Float32Array(n),den=new Float32Array(n),edge=[];
+  for(let j=0;j<n;j++){if(G1[j]<=T||G2[j]<1e-4)continue;
+    const R=G1[j]/G2[j],s=R>1.02?Math.min(5,s0/Math.sqrt(R*R-1)):5;num[j]=s;den[j]=1;edge.push(s);}
+  edge.sort((a,b)=>a-b);const med=edge.length?edge[edge.length>>1]:1.5;
+  const rs=Math.max(4,Math.round(Math.max(W,H)/28)),N=g3(num,W,H,rs),D=g3(den,W,H,rs),M=new Float32Array(n);
+  for(let j=0;j<n;j++){const w=clamp(D[j]*40,0,1);M[j]=w*(D[j]>1e-6?N[j]/D[j]:med)+(1-w)*med;}
+  return {W,H,M:g3(M,W,H,Math.max(2,rs>>1)),long:Math.max(W,H)};
+}
+function mapAt(fm,u,v){return fm.M[clamp(Math.round(v*(fm.H-1)),0,fm.H-1)*fm.W+clamp(Math.round(u*(fm.W-1)),0,fm.W-1)];}
+function rlLum(L,W,H,r,it){let e=Float32Array.from(L);const n=L.length;
+  for(let k=0;k<it;k++){const c=g3(e,W,H,r),q=new Float32Array(n);for(let j=0;j<n;j++)q[j]=L[j]/Math.max(1,c[j]);
+    const cq=g3(q,W,H,r);for(let j=0;j<n;j++)e[j]=clamp(e[j]*cq[j],0,300);}
+  return e;}
+/* per-pixel luminance correction (full strength) for an image of any size */
+function deblurDelta(img,fm){
+  const W=img.width,H=img.height,L=lumF(img),k=Math.max(W,H)/fm.long,lv=[1.1,2.6];
+  const E=lv.map(s=>rlLum(L,W,H,rOf(s*k),6)),dl=new Float32Array(W*H);
+  for(let y=0,j=0;y<H;y++)for(let x=0;x<W;x++,j++){
+    const s=mapAt(fm,x/(W-1),y/(H-1));let v;
+    if(s<.6)v=L[j];
+    else if(s<lv[0])v=L[j]+(E[0][j]-L[j])*(s-.6)/(lv[0]-.6);
+    else if(s<lv[1])v=E[0][j]+(E[1][j]-E[0][j])*(s-lv[0])/(lv[1]-lv[0]);
+    else v=E[1][j];
+    dl[j]=clamp(v-L[j],-45,45);}
+  return dl;
+}
+function applyDelta(img,dl,st){
+  const o=new ImageData(img.width,img.height),a=img.data,d=o.data;
+  for(let j=0,i=0;j<dl.length;j++,i+=4){const k=dl[j]*st;d[i]=a[i]+k;d[i+1]=a[i+1]+k;d[i+2]=a[i+2]+k;d[i+3]=255;}
+  return o;
+}
+function focusText(fm){
+  const rows=['上','中央','下'],cols=['左','中央','右'];let best=1e9,bi=0,bj=0;
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0,c=0;
+    for(let y=Math.floor(fm.H*i/3);y<Math.floor(fm.H*(i+1)/3);y+=4)for(let x=Math.floor(fm.W*j/3);x<Math.floor(fm.W*(j+1)/3);x+=4){s+=fm.M[y*fm.W+x];c++;}
+    if(s/c<best){best=s/c;bi=i;bj=j;}}
+  const where=bi===1&&bj===1?'中央':rows[bi]+(bj===1?'':'・'+cols[bj]);
+  return 'ピントが一番合っているのは画面の「'+where+'」付近です。';
+}
+function mapCanvas(fm){
+  const c=document.createElement('canvas');c.width=fm.W;c.height=fm.H;const x=c.getContext('2d'),img=x.createImageData(fm.W,fm.H),d=img.data;
+  for(let j=0;j<fm.M.length;j++){const t=clamp((fm.M[j]-.7)/1.8,0,1),i=j*4;
+    d[i]=Math.round(60+195*Math.min(1,t*2));d[i+1]=Math.round(210-170*Math.max(0,t*2-1));d[i+2]=70;d[i+3]=120;}
+  x.putImageData(img,0,0);return c;
+}
 function localSharpen(cv,u,v){
   const W=cv.width,H=cv.height,x=cv.getContext('2d'),img=x.getImageData(0,0,W,H),d=img.data,n=W*H;
   const L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];
@@ -662,11 +720,17 @@ async function capture(){
     }
     sharpen(base,.55);
   }else draw(base);
-  if(subject){deblurSubject(base,subject.u,subject.v);localSharpen(base,subject.u,subject.v);}
+  if(subject)localSharpen(base,subject.u,subject.v);
   const small=scaled(base,1280), tile=squareTile(base,120);
   shot={base,small,smallData:small.getContext('2d').getImageData(0,0,small.width,small.height),tile,
     guide:(burn&&OPS[opLevel].o>0)?{c:COMPS[idx],v:variant,o:OPS[opLevel].o}:null};
   const a=analyze(small); shot.auto=a.p; shot.note=a.note;
+  /* focus analysis: where it is sharp, and an automatic focus correction when the subject is soft */
+  showMap=false;$('mapBtn').setAttribute('aria-pressed','false');
+  shot.fm=focusMap(small); shot.fmCanvas=mapCanvas(shot.fm); shot.dl=null;
+  const sv=subject?mapAt(shot.fm,subject.u,subject.v):mapAt(shot.fm,.5,.5);
+  shot.focusNote=focusText(shot.fm);
+  if(sv>1){shot.auto.dfx=sv>2?85:65;shot.note+=' 主役のピントが甘いので、ピント補正をかけました。';}
   const pv=$('pv');pv.width=small.width;pv.height=small.height;
   $('thumbImg').src=tile.toDataURL('image/jpeg',.8); $('thumb').classList.add('has');
   buildPresets(); applyPreset('auto');
@@ -705,8 +769,8 @@ function analyze(cv){
 }
 
 /* ---------- color pipeline ---------- */
-const NUM=['exp','con','sat','tmp','tint','hl','sh','fade','grain','vig'];
-const ZERO=()=>({exp:0,con:0,sat:0,tmp:0,tint:0,hl:0,sh:0,fade:0,grain:0,vig:0,sp:null,style:null});
+const NUM=['exp','con','sat','tmp','tint','hl','sh','fade','grain','vig','dfx'];
+const ZERO=()=>({exp:0,con:0,sat:0,tmp:0,tint:0,hl:0,sh:0,fade:0,grain:0,vig:0,dfx:0,sp:null,style:null});
 function hueRGB(h){h=((h%360)+360)%360/60;const x=1-Math.abs(h%2-1);
   const c=[[1,x,0],[x,1,0],[0,1,x],[0,x,1],[x,0,1],[1,0,x]][Math.floor(h)%6];const m=(c[0]+c[1]+c[2])/3;return c.map(v=>v-m);}
 function hash2(x,y){let n=Math.imul(x,374761393)+Math.imul(y,668265263)|0;n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296;}
@@ -857,7 +921,7 @@ function stylize(img,style){
 
 /* ---------- presets (styles collected from popular editing apps and tutorials) ---------- */
 const ADJ=[{k:'exp',n:'明るさ',min:-100},{k:'con',n:'コントラスト',min:-100},{k:'sat',n:'彩度',min:-100},{k:'tmp',n:'色温度',min:-100},
-  {k:'hl',n:'ハイライト',min:-100},{k:'sh',n:'シャドウ',min:-100},{k:'grain',n:'粒子',min:0},{k:'vig',n:'周辺減光',min:0}];
+  {k:'hl',n:'ハイライト',min:-100},{k:'sh',n:'シャドウ',min:-100},{k:'grain',n:'粒子',min:0},{k:'vig',n:'周辺減光',min:0},{k:'dfx',n:'ピント補正',min:0}];
 const P=(a,o)=>({...a,...o,con:a.con+(o.con||0),sat:o.sat===-100?-100:a.sat+(o.sat||0),exp:a.exp+(o.exp||0),tmp:o.tmp0?0:a.tmp+(o.tmp||0)});
 const PRESETS=[
   {k:'orig',n:'オリジナル',d:'補正前の写真です。',f:a=>ZERO()},
@@ -881,8 +945,8 @@ const PRESETS=[
   {k:'sketch',n:'スケッチ風',d:'鉛筆で描いたようなモノクロのスケッチに。',f:a=>P(a,{style:'sketch'})},
   {k:'comic',n:'アメコミ風',d:'インクの輪郭線・黒ベタ・斜線の影・網点に、オレンジと青緑の鮮やかな色で、アメコミの一コマのように。',f:a=>P(a,{style:'comic'})}
 ];
-let params=ZERO(), tool='exp', rafId=0;
-const fix=p=>{const q={...ZERO(),...p};delete q.tmp0;for(const k of NUM)q[k]=clamp(Math.round(q[k]),k==='grain'||k==='vig'?0:-100,100);return q;};
+let curPreset='auto',params=ZERO(), tool='exp', rafId=0;
+const fix=p=>{const q={...ZERO(),...p};delete q.tmp0;for(const k of NUM)q[k]=clamp(Math.round(q[k]),k==='grain'||k==='vig'||k==='dfx'?0:-100,100);return q;};
 function buildPresets(){
   const box=$('presets');box.innerHTML='';
   const td=shot.tile.getContext('2d').getImageData(0,0,shot.tile.width,shot.tile.height);
@@ -900,7 +964,7 @@ function markPreset(k){[...$('presets').children].forEach(b=>b.setAttribute('ari
 function applyPreset(k){
   const pr=PRESETS.find(p=>p.k===k);
   params=fix(pr.f(shot.auto));markPreset(k);
-  $('diag').textContent=pr.d||shot.note;
+  curPreset=k;$('diag').textContent=pr.d||shot.note;
   updateTools();schedule();
 }
 const tools=$('tools');
@@ -915,7 +979,18 @@ function updateTools(){
 }
 $('rng').addEventListener('input',e=>{params[tool]=+e.target.value;markPreset('');updateTools();schedule();});
 $('rng').addEventListener('dblclick',()=>{params[tool]=0;markPreset('');updateTools();schedule();});
-function schedule(){cancelAnimationFrame(rafId);rafId=requestAnimationFrame(()=>$('pv').getContext('2d').putImageData(processData(shot.smallData,params),0,0));}
+let showMap=false;
+function srcSmall(){
+  if(!params.dfx)return shot.smallData;
+  if(!shot.dl)shot.dl=deblurDelta(shot.smallData,shot.fm);
+  return applyDelta(shot.smallData,shot.dl,params.dfx/100);
+}
+function schedule(){cancelAnimationFrame(rafId);rafId=requestAnimationFrame(()=>{
+  const pv=$('pv'),x=pv.getContext('2d');x.putImageData(processData(srcSmall(),params),0,0);
+  if(showMap){x.globalAlpha=1;x.imageSmoothingQuality='high';x.drawImage(shot.fmCanvas,0,0,pv.width,pv.height);}
+});}
+$('mapBtn').addEventListener('click',e=>{if(!shot)return;showMap=!showMap;e.currentTarget.setAttribute('aria-pressed',showMap);
+  $('diag').textContent=showMap?shot.focusNote+' 緑：ピントが合っている／赤：ボケている':(PRESETS.find(p=>p.k===curPreset)?.d||shot.note);schedule();});
 const wrap=$('imgwrap');
 wrap.addEventListener('pointerdown',()=>{if(shot){cancelAnimationFrame(rafId);$('pv').getContext('2d').putImageData(shot.smallData,0,0);}});
 ['pointerup','pointercancel','pointerleave'].forEach(t=>wrap.addEventListener(t,()=>{if(shot)schedule();}));
@@ -934,7 +1009,9 @@ async function finalBlob(){
   const b=params.style&&Math.max(shot.base.width,shot.base.height)>1600?scaled(shot.base,1600):shot.base;
   const out=document.createElement('canvas');out.width=b.width;out.height=b.height;
   const ctx=out.getContext('2d');
-  ctx.putImageData(processData(b.getContext('2d').getImageData(0,0,b.width,b.height),params),0,0);
+  let src=b.getContext('2d').getImageData(0,0,b.width,b.height);
+  if(params.dfx){$('sheetMsg').textContent='ピント補正を計算中…';await new Promise(r=>setTimeout(r,30));src=applyDelta(src,deblurDelta(src,shot.fm),params.dfx/100);}
+  ctx.putImageData(processData(src,params),0,0);
   const gd=shot.guide;
   if(gd){
     const svg=buildSvg(gd.c,b.width,b.height,gd.v,Math.max(2,Math.min(b.width,b.height)/240));
