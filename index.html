@@ -53,6 +53,9 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .focusring.on{animation:fr .35s ease-out forwards}
 .focusring.ok{border-width:2px}
 .focusring.dim{opacity:.55!important}
+.focusring.hunt{animation:fr .35s ease-out forwards,hp .5s ease-in-out .35s infinite alternate}
+.focusring.good{border-color:#4ADE80;border-width:2px}
+@keyframes hp{from{transform:scale(1)}to{transform:scale(.88)}}
 @keyframes fr{to{opacity:1;transform:scale(1)}}
 .bigname{position:fixed;left:0;right:0;top:38%;text-align:center;pointer-events:none;opacity:0;
   font-size:2.25rem;font-weight:300;letter-spacing:.12em;text-shadow:0 2px 18px rgba(0,0,0,.55)}
@@ -449,11 +452,13 @@ async function tapFocus(cx,cy){
   ring.style.left=x+'px';ring.style.top=y+'px';
   if(source==='still'||!focusSupported()){
     /* iPhone: remember the tapped spot as the subject; it is sharpened locally after the shot */
+    if(busyShot)return;
     subject={u:x/r.width,v:y/r.height};
-    ring.classList.remove('on','ok','dim');void ring.offsetWidth;ring.classList.add('on');
-    clearTimeout(focusT);focusT=setTimeout(()=>ring.classList.add('dim'),1400);
-    navigator.vibrate?.(8);
-    if(!focusHinted){focusHinted=true;toast('タップした場所を主役として、撮影後にくっきり仕上げます',null,null,3200);}
+    ring.classList.remove('on','ok','dim','good','hunt');void ring.offsetWidth;ring.classList.add('on');
+    clearTimeout(focusT);navigator.vibrate?.(8);
+    if(source==='still'){focusT=setTimeout(()=>ring.classList.add('dim'),1400);return;}
+    if(!focusHinted){focusHinted=true;toast('ピントを探し直して、主役が一番くっきりした瞬間を撮影します',null,null,3000);}
+    focusHunt();
     return;
   }
   ring.classList.remove('on','ok');void ring.offsetWidth;ring.classList.add('on');
@@ -739,27 +744,60 @@ function localSharpen(cv,u,v){
       d[i]+=k;d[i+1]+=k;d[i+2]+=k;}}
   x.putImageData(img,0,0);
 }
-async function capture(){
+/* frame geometry for the visible crop of the current source */
+function geom(){
   const el=source==='video'?video:still;
   const iw=source==='video'?video.videoWidth:still.naturalWidth, ih=source==='video'?video.videoHeight:still.naturalHeight;
-  if(!iw||!ih)return;
+  if(!iw||!ih)return null;
   const Dw=vf.clientWidth,Dh=vf.clientHeight,s=Math.max(Dw/iw,Dh/ih);
   const dz=source==='video'&&!hwZoom?zf:1;
   const cw=Math.round(Dw/s/dz),ch=Math.round(Dh/s/dz),sx0=(iw-cw)/2,sy0=(ih-ch)/2;
   const mk=()=>{const c=document.createElement('canvas');c.width=cw;c.height=ch;return c;};
   const draw=c=>{const ctx=c.getContext('2d');ctx.save();if(source==='video'&&lens==='front'){ctx.translate(cw,0);ctx.scale(-1,1);}
     ctx.drawImage(el,sx0,sy0,cw,ch,0,0,cw,ch);ctx.restore();};
-  let base=mk();
+  const subjSharp=()=>subject?sharpness(video,iw,ih,lens==='front'?sx0+(1-subject.u)*cw:sx0+subject.u*cw,sy0+subject.v*ch):sharpness(video,iw,ih);
+  return {el,iw,ih,cw,ch,sx0,sy0,mk,draw,subjSharp};
+}
+let busyShot=false;
+async function capture(){
+  if(busyShot)return;const g=geom();if(!g)return;
+  let base=g.mk();
   if(source==='video'){
     /* burst of a few frames, keep the sharpest one */
-    let best=-1,spare=mk();
+    let best=-1,spare=g.mk();
     for(let f=0;f<6;f++){
       if(f)await nextFrame();
-      const sh=subject?sharpness(video,iw,ih,lens==='front'?sx0+(1-subject.u)*cw:sx0+subject.u*cw,sy0+subject.v*ch):sharpness(video,iw,ih);
-      if(sh>best){best=sh;draw(spare);[base,spare]=[spare,base];}
+      const sh=g.subjSharp();
+      if(sh>best){best=sh;g.draw(spare);[base,spare]=[spare,base];}
     }
     sharpen(base,.55);
-  }else draw(base);
+  }else g.draw(base);
+  finishShot(base);
+}
+/* focus hunt (iPhone): restart the camera so iOS searches focus again from scratch,
+   watch every frame during the search and keep the one where the tapped subject is sharpest */
+async function focusHunt(){
+  if(busyShot||source!=='video')return;
+  busyShot=true;const ring=$('focusRing');
+  ring.classList.remove('good','dim');ring.classList.add('hunt');
+  try{
+    const dev=track?.getSettings?.().deviceId;
+    await openStream(lens==='front'||!dev?{facingMode:'user'}:{deviceId:{exact:dev}});
+    await applyZoom();
+    let g=geom(),base=g.mk(),spare=g.mk(),best=-1,first=-1;const t0=performance.now();
+    while(performance.now()-t0<2200){
+      await nextFrame();
+      if(video.videoWidth!==g.iw||video.videoHeight!==g.ih){g=geom();base=g.mk();spare=g.mk();best=-1;}
+      const sh=g.subjSharp();if(first<0)first=sh;
+      if(sh>best){best=sh;g.draw(spare);[base,spare]=[spare,base];}
+    }
+    ring.classList.remove('hunt');ring.classList.add(best>first*1.15?'good':'dim');
+    const fl=$('flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
+    sharpen(base,.55);busyShot=false;finishShot(base);
+  }catch(e){ring.classList.remove('hunt');toast('ピント探しに失敗しました。もう一度タップしてください');}
+  finally{busyShot=false;}
+}
+function finishShot(base){
   if(subject)localSharpen(base,subject.u,subject.v);
   const small=scaled(base,1280), tile=squareTile(base,120);
   shot={base,small,smallData:small.getContext('2d').getImageData(0,0,small.width,small.height),tile,
@@ -1040,6 +1078,7 @@ wrap.addEventListener('contextmenu',e=>e.preventDefault());
 
 function openSheet(){$('sheetMsg').textContent='';$('sheet').classList.add('open');}
 $('shutter').addEventListener('click',()=>{
+  if(busyShot)return;
   const fl=$('flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on');
   navigator.vibrate?.(12); capture();
 });
