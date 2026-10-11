@@ -687,6 +687,34 @@ function mapCanvas(fm){
     d[i]=Math.round(60+195*Math.min(1,t*2));d[i+1]=Math.round(210-170*Math.max(0,t*2-1));d[i+2]=70;d[i+3]=120;}
   x.putImageData(img,0,0);return c;
 }
+/* ---------- refocus on the subject plane ----------
+   1) Find the blur size at the tapped subject by trying several blur sizes and keeping the largest one
+      that still deconvolves cleanly (no ringing in flat areas).
+   2) Deconvolve the whole image with that size and apply it where the focus map says the blur is
+      similar or larger (same distance as the subject and beyond). Already-sharp areas stay untouched. */
+function subjectSigma(base,u,v){
+  const W=base.width,H=base.height,half=Math.round(.12*Math.min(W,H));
+  const cx=Math.round(u*W),cy=Math.round(v*H),x0=clamp(cx-half,0,W-2*half),y0=clamp(cy-half,0,H-2*half),w=Math.min(W,2*half),h=Math.min(H,2*half);
+  const L=lumF(base.getContext('2d').getImageData(x0,y0,w,h)),G=sobel(L,w,h),flatT=pctl(G,.45);
+  let best=0;
+  for(const s of [1.2,1.7,2.4,3.3,4.5,6,8]){
+    const E=rlLum(L,w,h,rOf(s),8);let dev=0,c=0,gain=0,gc=0;
+    for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){const j=y*w+x;
+      if(G[j]<=flatT){dev+=Math.abs(E[j]-L[j]);c++;}else{gain+=Math.abs(E[j]-L[j]);gc++;}}
+    dev/=Math.max(1,c);gain/=Math.max(1,gc);
+    if(dev<3.2&&gain>dev*1.6)best=s;else break;
+  }
+  return best;
+}
+function refocusDelta(img,sigBase,baseLong,fm,it=12){
+  const W=img.width,H=img.height,L=lumF(img),k=Math.max(W,H)/baseLong,sig=Math.max(1,sigBase*k);
+  const E=rlLum(L,W,H,rOf(sig),it),dl=new Float32Array(W*H);
+  const sigA=sigBase*fm.long/baseLong; /* subject blur in focus-map units */
+  for(let y=0,j=0;y<H;y++)for(let x=0;x<W;x++,j++){
+    const s=mapAt(fm,x/(W-1),y/(H-1)),w=clamp((s-.45*sigA)/(.35*sigA),0,1);
+    dl[j]=w?clamp(E[j]-L[j],-60,60)*w:0;}
+  return dl;
+}
 function localSharpen(cv,u,v){
   const W=cv.width,H=cv.height,x=cv.getContext('2d'),img=x.getImageData(0,0,W,H),d=img.data,n=W*H;
   const L=new Float32Array(n);for(let j=0;j<n;j++)L[j]=.299*d[j*4]+.587*d[j*4+1]+.114*d[j*4+2];
@@ -728,9 +756,11 @@ async function capture(){
   /* focus analysis: where it is sharp, and an automatic focus correction when the subject is soft */
   showMap=false;$('mapBtn').setAttribute('aria-pressed','false');
   shot.fm=focusMap(small); shot.fmCanvas=mapCanvas(shot.fm); shot.dl=null;
-  const sv=subject?mapAt(shot.fm,subject.u,subject.v):mapAt(shot.fm,.5,.5);
+  const su=subject?subject.u:.5,sv=subject?subject.v:.5;
+  shot.sig=subjectSigma(base,su,sv);shot.baseLong=Math.max(base.width,base.height);
   shot.focusNote=focusText(shot.fm);
-  if(sv>1){shot.auto.dfx=sv>2?85:65;shot.note+=' 主役のピントが甘いので、ピント補正をかけました。';}
+  if(shot.sig>=1.7){shot.auto.dfx=shot.sig>=3.3?90:75;
+    shot.note+=` 主役の位置が約${Math.round(shot.sig*10)/10}ピクセル分ボケていたので、同じ距離のピントを補正しました。`;}
   const pv=$('pv');pv.width=small.width;pv.height=small.height;
   $('thumbImg').src=tile.toDataURL('image/jpeg',.8); $('thumb').classList.add('has');
   buildPresets(); applyPreset('auto');
@@ -982,7 +1012,7 @@ $('rng').addEventListener('dblclick',()=>{params[tool]=0;markPreset('');updateTo
 let showMap=false;
 function srcSmall(){
   if(!params.dfx)return shot.smallData;
-  if(!shot.dl)shot.dl=deblurDelta(shot.smallData,shot.fm);
+  if(!shot.dl)shot.dl=shot.sig>=1.2?refocusDelta(shot.smallData,shot.sig,shot.baseLong,shot.fm,9):deblurDelta(shot.smallData,shot.fm);
   return applyDelta(shot.smallData,shot.dl,params.dfx/100);
 }
 function schedule(){cancelAnimationFrame(rafId);rafId=requestAnimationFrame(()=>{
@@ -1010,7 +1040,7 @@ async function finalBlob(){
   const out=document.createElement('canvas');out.width=b.width;out.height=b.height;
   const ctx=out.getContext('2d');
   let src=b.getContext('2d').getImageData(0,0,b.width,b.height);
-  if(params.dfx){$('sheetMsg').textContent='ピント補正を計算中…';await new Promise(r=>setTimeout(r,30));src=applyDelta(src,deblurDelta(src,shot.fm),params.dfx/100);}
+  if(params.dfx){$('sheetMsg').textContent='ピント補正を計算中…';await new Promise(r=>setTimeout(r,30));src=applyDelta(src,shot.sig>=1.2?refocusDelta(src,shot.sig,shot.baseLong,shot.fm):deblurDelta(src,shot.fm),params.dfx/100);}
   ctx.putImageData(processData(src,params),0,0);
   const gd=shot.guide;
   if(gd){
